@@ -1,0 +1,438 @@
+import { useState, useRef, FormEvent, ChangeEvent, useEffect } from "react";
+import { Mail, Phone, Clock, MessageSquare, Facebook, Instagram, Globe, Award, Loader2, CheckCircle2, AlertCircle, Upload } from "lucide-react";
+
+interface ContactSectionProps {
+  phone: string;
+  email: string;
+  facebook: string;
+  instagram: string;
+  behance: string;
+  fiverr: string;
+  businessHours: string;
+  responseTime: string;
+  prefilledProjectType?: string;
+}
+
+export default function ContactSection({
+  phone,
+  email,
+  facebook,
+  instagram,
+  behance,
+  fiverr,
+  businessHours,
+  responseTime,
+  prefilledProjectType = "High-End Jewelry Retouching"
+}: ContactSectionProps) {
+  const [name, setName] = useState("");
+  const [company, setCompany] = useState("");
+  const [userEmail, setUserEmail] = useState("");
+  const [whatsapp, setWhatsapp] = useState("");
+  const [projectType, setProjectType] = useState("");
+  const [message, setMessage] = useState("");
+  
+  const [fileUrl, setFileUrl] = useState<string | null>(null);
+  const [originalFileName, setOriginalFileName] = useState("");
+  const [isUploading, setIsUploading] = useState(false);
+  
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Prefill project type when selected service changes
+  useEffect(() => {
+    if (prefilledProjectType) {
+      setProjectType(prefilledProjectType);
+    }
+  }, [prefilledProjectType]);
+
+  const handleFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setIsUploading(true);
+      setErrorMsg(null);
+      setOriginalFileName(file.name);
+
+      const reader = new FileReader();
+      reader.onload = async () => {
+        try {
+          const res = await fetch("/api/upload", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name: file.name, data: reader.result as string })
+          });
+          const data = await res.json();
+          if (data.success) {
+            setFileUrl(data.url);
+          } else {
+            setErrorMsg("Failed to upload file to storage. Using internal base64.");
+            setFileUrl(reader.result as string);
+          }
+        } catch (err) {
+          setErrorMsg("File upload failed. Using local stream.");
+        } finally {
+          setIsUploading(false);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleFormSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    setErrorMsg(null);
+
+    const submissionData = {
+      name,
+      company,
+      email: userEmail,
+      whatsapp,
+      projectType,
+      message,
+      files: fileUrl ? [{ name: originalFileName, data: fileUrl }] : []
+    };
+
+    try {
+      const res = await fetch("/api/contacts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(submissionData)
+      });
+      const data = await res.json();
+      if (data.success) {
+        setIsSuccess(true);
+        // Clear inputs
+        setName("");
+        setCompany("");
+        setUserEmail("");
+        setWhatsapp("");
+        setMessage("");
+        setFileUrl(null);
+      } else {
+        setErrorMsg(data.message || "Failed to submit project inquiry.");
+      }
+    } catch (err) {
+      setErrorMsg("Failed to connect to agency server. Please retry.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const cleanPhone = phone.replace(/[^0-9+]/g, "");
+
+  return (
+    <section id="contact" className="py-24 bg-[#080808] relative overflow-hidden border-t border-white/10">
+      <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-[#D4AF37]/5 rounded-full blur-[140px] pointer-events-none" />
+      
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+        
+        {/* Section Header */}
+        <div className="text-center max-w-3xl mx-auto mb-16" id="contact-header">
+          <div className="inline-flex items-center gap-3 text-[#D4AF37] text-xs font-bold tracking-[0.3em] uppercase mb-4">
+            <span className="w-12 h-[1px] bg-[#D4AF37]"></span>
+            Inquire Now
+            <span className="w-12 h-[1px] bg-[#D4AF37]"></span>
+          </div>
+          <h2 className="font-display font-light text-3xl sm:text-5xl text-white mb-4">
+            Let's Discuss Your Next <span className="italic font-serif text-[#D4AF37]">Jewelry Project</span>
+          </h2>
+          <p className="font-sans text-gray-400 text-sm font-light leading-relaxed">
+            Ready to scale your e-commerce conversion rates? Send our specialists your project volume details and custom style requirements. We will draft an accurate quotation immediately.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12" id="contact-stage">
+          
+          {/* Inquiry Form Left (7 cols) */}
+          <div className="lg:col-span-7 bg-[#080808] border border-white/10 rounded-none p-6 sm:p-10 text-left shadow-2xl">
+            {isSuccess ? (
+              <div className="py-12 text-center max-w-md mx-auto animate-fade-in" id="contact-success-panel">
+                <div className="w-16 h-16 rounded-none border border-green-500/20 bg-green-500/10 flex items-center justify-center text-green-400 mx-auto mb-6">
+                  <CheckCircle2 className="w-8 h-8" />
+                </div>
+                <h3 className="font-display text-xl font-semibold text-white mb-2">Project Inquiry Logged</h3>
+                <p className="font-sans text-xs sm:text-sm text-gray-400 font-light leading-relaxed mb-6">
+                  Your project specifications have been securely routed to our 25 editing supervisors. We will email or message you on WhatsApp within 30 minutes with a detailed timeline & budget draft.
+                </p>
+                <button
+                  onClick={() => setIsSuccess(false)}
+                  className="px-5 py-2.5 border border-[#D4AF37]/40 hover:border-[#D4AF37] text-[#D4AF37] font-sans text-xs uppercase tracking-widest bg-white/5 rounded-none transition-all"
+                >
+                  Send another inquiry
+                </button>
+              </div>
+            ) : (
+              <form onSubmit={handleFormSubmit} className="space-y-5" id="form-contact-inquiry">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                  <div>
+                    <label className="block text-[10px] uppercase tracking-widest text-gray-400 font-sans mb-1.5 font-bold">
+                      Full Name <span className="text-[#D4AF37]">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      placeholder="e.g. David Sterling"
+                      className="w-full py-2.5 px-3.5 rounded-none bg-[#0c0c0c] border border-white/10 text-white font-sans text-xs focus:border-[#D4AF37] focus:outline-none transition-all font-light"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] uppercase tracking-widest text-gray-400 font-sans mb-1.5 font-bold">
+                      Company Name
+                    </label>
+                    <input
+                      type="text"
+                      value={company}
+                      onChange={(e) => setCompany(e.target.value)}
+                      placeholder="e.g. Sterling Diamonds Ltd"
+                      className="w-full py-2.5 px-3.5 rounded-none bg-[#0c0c0c] border border-white/10 text-white font-sans text-xs focus:border-[#D4AF37] focus:outline-none transition-all font-light"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                  <div>
+                    <label className="block text-[10px] uppercase tracking-widest text-gray-400 font-sans mb-1.5 font-bold">
+                      Email Address <span className="text-[#D4AF37]">*</span>
+                    </label>
+                    <input
+                      type="email"
+                      required
+                      value={userEmail}
+                      onChange={(e) => setUserEmail(e.target.value)}
+                      placeholder="e.g. sales@sterlingdiamonds.com"
+                      className="w-full py-2.5 px-3.5 rounded-none bg-[#0c0c0c] border border-white/10 text-white font-sans text-xs focus:border-[#D4AF37] focus:outline-none transition-all font-light"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] uppercase tracking-widest text-gray-400 font-sans mb-1.5 font-bold">
+                      WhatsApp Number <span className="text-[#D4AF37]">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={whatsapp}
+                      onChange={(e) => setWhatsapp(e.target.value)}
+                      placeholder="e.g. +1 415 555-4321"
+                      className="w-full py-2.5 px-3.5 rounded-none bg-[#0c0c0c] border border-white/10 text-white font-sans text-xs focus:border-[#D4AF37] focus:outline-none transition-all font-light"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] uppercase tracking-widest text-gray-400 font-sans mb-1.5 font-bold">
+                    Project Type <span className="text-[#D4AF37]">*</span>
+                  </label>
+                  <select
+                    required
+                    value={projectType}
+                    onChange={(e) => setProjectType(e.target.value)}
+                    className="w-full py-2.5 px-3.5 rounded-none bg-[#0c0c0c] border border-white/10 text-white font-sans text-xs focus:border-[#D4AF37] focus:outline-none transition-all font-light"
+                  >
+                    <option value="" disabled className="bg-[#080808]">Select Your Retouching Spec...</option>
+                    <option value="High-End Jewelry Retouching" className="bg-[#080808]">High-End Jewelry Retouching</option>
+                    <option value="Background Removal & clipping path" className="bg-[#080808]">Background Removal & Clipping Path</option>
+                    <option value="Diamond & Gemstone Enhancement" className="bg-[#080808]">Diamond & Gemstone Enhancement</option>
+                    <option value="Metal Polishing & Texturing" className="bg-[#080808]">Metal Polishing & Texturing</option>
+                    <option value="Shadow & Reflection Creation" className="bg-[#080808]">Shadow & Reflection Creation</option>
+                    <option value="Bulk E-commerce Volume Editing" className="bg-[#080808]">Bulk E-commerce Volume Editing</option>
+                    <option value="Custom Complex Multi-Spec Project" className="bg-[#080808]">Custom Complex Multi-Spec Project</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] uppercase tracking-widest text-gray-400 font-sans mb-1.5 font-bold">
+                    Project Brief & instructions <span className="text-[#D4AF37]">*</span>
+                  </label>
+                  <textarea
+                    required
+                    rows={4}
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    placeholder="Describe your design specifications, output file format (TIF/PNG/JPG), and approximate weekly/monthly image volume..."
+                    className="w-full py-2.5 px-3.5 rounded-none bg-[#0c0c0c] border border-white/10 text-white font-sans text-xs focus:border-[#D4AF37] focus:outline-none transition-all resize-none font-light"
+                  />
+                </div>
+
+                {/* File Attachment Upload */}
+                <div>
+                  <label className="block text-[10px] uppercase tracking-widest text-gray-400 font-sans mb-1.5 font-bold">
+                    Attach Design Brief / Sample File
+                  </label>
+                  <div className="flex items-center gap-4">
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="px-4 py-2 border border-[#D4AF37]/30 hover:border-[#D4AF37] text-white font-sans text-xs uppercase tracking-wider rounded-none bg-white/5 flex items-center gap-1.5 transition-all cursor-pointer"
+                    >
+                      <Upload className="w-3.5 h-3.5" />
+                      Browse File
+                    </button>
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      onChange={handleFileChange}
+                      className="hidden"
+                    />
+                    
+                    {isUploading ? (
+                      <div className="flex items-center gap-1.5 font-mono text-[10px] text-[#D4AF37] animate-pulse">
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        Uploading Attachment...
+                      </div>
+                    ) : fileUrl ? (
+                      <span className="font-sans text-xs text-green-400 truncate max-w-xs">
+                        ✓ {originalFileName}
+                      </span>
+                    ) : (
+                      <span className="font-sans text-[10px] text-gray-500 font-light">
+                        No file attached (Optional)
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {errorMsg && (
+                  <div className="p-4 border border-red-500/20 bg-red-500/5 rounded-none text-red-400 text-xs flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4 shrink-0" />
+                    <span>{errorMsg}</span>
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={isSubmitting || isUploading}
+                  className="w-full py-3.5 bg-[#D4AF37] hover:bg-white text-black font-sans font-bold text-xs uppercase tracking-widest rounded-none hover:brightness-110 active:brightness-95 transition-all duration-300 disabled:opacity-50 cursor-pointer"
+                >
+                  {isSubmitting ? (
+                    <span className="flex items-center justify-center gap-1.5">
+                      <Loader2 className="w-3.5 h-3.5 animate-spin text-black" />
+                      Submitting Specs...
+                    </span>
+                  ) : (
+                    "Submit Project Specifications"
+                  )}
+                </button>
+              </form>
+            )}
+          </div>
+
+          {/* Agency Coordinates Right (5 cols) */}
+          <div className="lg:col-span-5 text-left flex flex-col justify-between" id="contact-coords">
+            <div className="space-y-6">
+              
+              {/* WhatsApp direct block */}
+              <a 
+                href={`https://wa.me/${cleanPhone}`}
+                target="_blank"
+                rel="noreferrer"
+                className="block bg-[#080808] border border-white/10 p-6 rounded-none hover:border-[#D4AF37]/40 transition-all shadow-xl hover:-translate-y-0.5"
+              >
+                <div className="flex items-start gap-4">
+                  <div className="p-3 bg-white/5 text-[#D4AF37] rounded-none border border-white/10">
+                    <MessageSquare className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="font-display font-semibold text-sm text-white">Direct WhatsApp Support</h4>
+                    <p className="font-mono text-sm font-bold text-[#D4AF37] mt-0.5">{phone}</p>
+                    <p className="font-sans text-[10px] text-gray-500 mt-1 leading-relaxed font-light">
+                      Click to chat directly with our shift lead. Ideal for quick files and bulk pricing.
+                    </p>
+                  </div>
+                </div>
+              </a>
+
+              {/* Email Block */}
+              <a 
+                href={`mailto:${email}`}
+                className="block bg-[#080808] border border-white/10 p-6 rounded-none hover:border-[#D4AF37]/40 transition-all shadow-xl hover:-translate-y-0.5"
+              >
+                <div className="flex items-start gap-4">
+                  <div className="p-3 bg-white/5 text-[#D4AF37] rounded-none border border-white/10">
+                    <Mail className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="font-display font-semibold text-sm text-white">Official Agency Email</h4>
+                    <p className="font-mono text-sm font-semibold text-gray-300 mt-0.5">{email}</p>
+                    <p className="font-sans text-[10px] text-gray-500 mt-1 leading-relaxed font-light">
+                      Submit style-guides, FTP credentials, or high-fidelity instructions here.
+                    </p>
+                  </div>
+                </div>
+              </a>
+
+              {/* Coordinates & Hours block */}
+              <div className="bg-[#080808] border border-white/10 p-6 rounded-none space-y-4 shadow-xl">
+                <div className="flex items-center gap-3 text-xs font-sans text-gray-400 font-light">
+                  <Clock className="w-4 h-4 text-[#D4AF37]" />
+                  <span>Business Hours: <strong className="font-semibold text-white">{businessHours}</strong></span>
+                </div>
+                <div className="flex items-center gap-3 text-xs font-sans text-gray-400 font-light">
+                  <Globe className="w-4 h-4 text-[#D4AF37]" />
+                  <span>Client Base: <strong className="font-semibold text-white">{phone.startsWith("+880") ? "Worldwide" : "Worldwide (Europe, US, Japan, India)"}</strong></span>
+                </div>
+                <div className="flex items-center gap-3 text-xs font-sans text-gray-400 font-light">
+                  <Award className="w-4 h-4 text-[#D4AF37]" />
+                  <span>Shift Supervisors: <strong className="font-semibold text-white">M.R Mahatab & Ismail Al Yafi</strong></span>
+                </div>
+              </div>
+
+            </div>
+
+            {/* Social handles list at the bottom */}
+            <div className="mt-10 border-t border-white/10 pt-6">
+              <h4 className="font-display text-xs tracking-widest uppercase text-white mb-4">
+                Follow our Art portfolios
+              </h4>
+              <div className="flex flex-wrap gap-3">
+                <a 
+                  href={facebook}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="px-4 py-2 border border-white/10 bg-[#080808] hover:border-[#D4AF37]/40 text-gray-400 hover:text-[#D4AF37] rounded-none font-sans text-xs flex items-center gap-2 transition-all duration-300"
+                >
+                  <Facebook className="w-3.5 h-3.5" />
+                  Facebook
+                </a>
+                <a 
+                  href={instagram}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="px-4 py-2 border border-white/10 bg-[#080808] hover:border-[#D4AF37]/40 text-gray-400 hover:text-[#D4AF37] rounded-none font-sans text-xs flex items-center gap-2 transition-all duration-300"
+                >
+                  <Instagram className="w-3.5 h-3.5" />
+                  Instagram
+                </a>
+                <a 
+                  href={behance}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="px-4 py-2 border border-white/10 bg-[#080808] hover:border-[#D4AF37]/40 text-gray-400 hover:text-[#D4AF37] rounded-none font-sans text-xs flex items-center gap-2 transition-all duration-300"
+                >
+                  <Globe className="w-3.5 h-3.5" />
+                  Behance
+                </a>
+                <a 
+                  href={fiverr}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="px-4 py-2 border border-white/10 bg-[#080808] hover:border-[#D4AF37]/40 text-gray-400 hover:text-[#D4AF37] rounded-none font-sans text-xs flex items-center gap-2 transition-all duration-300"
+                >
+                  <Globe className="w-3.5 h-3.5" />
+                  Fiverr Store
+                </a>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+    </section>
+  );
+}

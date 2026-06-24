@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 600" width="100%" height="100%">
+  <defs>
+    <!-- Premium Silver Metallic Gradient -->
+    <linearGradient id="silverGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF" />
+      <stop offset="20%" stop-color="#E5E7EB" />
+      <stop offset="40%" stop-color="#9CA3AF" />
+      <stop offset="60%" stop-color="#D1D5DB" />
+      <stop offset="80%" stop-color="#E5E7EB" />
+      <stop offset="100%" stop-color="#FFFFFF" />
+    </linearGradient>
+    
+    <!-- Subtle Drop Shadow for luxury depth -->
+    <filter id="luxuryShadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#000000" flood-opacity="0.6" />
+    </filter>
+  </defs>
+
+  <g filter="url(#luxuryShadow)">
+    <!-- Concentric Left Arch Segments (Framing) -->
+    <!-- Outer Arc -->
+    <path d="M 410,100 A 180,180 0 0,0 410,420" fill="none" stroke="url(#silverGradient)" stroke-width="2.5" stroke-linecap="round" />
+    <!-- Inner Arc -->
+    <path d="M 390,130 A 150,150 0 0,0 390,390" fill="none" stroke="url(#silverGradient)" stroke-width="1.5" stroke-linecap="round" stroke-dasharray="1000 15 5 15" />
+    <!-- Small Accent Arch -->
+    <path d="M 370,160 A 120,120 0 0,0 370,360" fill="none" stroke="url(#silverGradient)" stroke-width="1" opacity="0.5" />
+
+    <!-- Stylized Monogram "JP" -->
+    <!-- J Path -->
+    <path d="M 440,195 L 440,320 C 440,350 415,370 385,370 C 365,370 350,360 340,345" fill="none" stroke="url(#silverGradient)" stroke-width="12" stroke-linecap="round" stroke-linejoin="round" />
+    
+    <!-- P Path -->
+    <path d="M 485,195 L 485,370" fill="none" stroke="url(#silverGradient)" stroke-width="12" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M 485,195 C 540,195 545,275 485,275" fill="none" stroke="url(#silverGradient)" stroke-width="12" stroke-linecap="round" stroke-linejoin="round" />
+
+    <!-- Diamond Jewel atop the J -->
+    <g transform="translate(440, 150)">
+      <!-- Outer diamond points -->
+      <polygon points="0,-25 22,-5 0,17 -22,-5" fill="none" stroke="url(#silverGradient)" stroke-width="2" stroke-linejoin="round" />
+      <!-- Facet lines -->
+      <line x1="0" y1="-25" x2="0" y2="17" stroke="url(#silverGradient)" stroke-width="1.5" />
+      <line x1="-22" y1="-5" x2="22" y2="-5" stroke="url(#silverGradient)" stroke-width="1.5" />
+      <line x1="0" y1="-25" x2="-22" y2="-5" stroke="url(#silverGradient)" stroke-width="1.5" />
+      <line x1="0" y1="-25" x2="22" y2="-5" stroke="url(#silverGradient)" stroke-width="1.5" />
+      <line x1="0" y1="17" x2="-22" y2="-5" stroke="url(#silverGradient)" stroke-width="1.5" />
+      <line x1="0" y1="17" x2="22" y2="-5" stroke="url(#silverGradient)" stroke-width="1.5" />
+    </g>
+
+    <!-- 'JEWELRY PERFECTION' Brand Text -->
+    <text x="450" y="475" 
+          font-family="'Space Grotesk', 'Montserrat', 'Inter', sans-serif" 
+          font-size="34" 
+          font-weight="300" 
+          fill="url(#silverGradient)" 
+          text-anchor="middle" 
+          letter-spacing="18" 
+          opacity="0.95">JEWELRY PERFECTION</text>
+  </g>
+</svg>

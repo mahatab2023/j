@@ -1,0 +1,1321 @@
+import { useState, useEffect, ChangeEvent, FormEvent } from "react";
+import { 
+  BarChart, Layers, MoveHorizontal, Users, ShieldCheck, Star, 
+  MessageSquare, Settings, Lock, FileText, Image, Trash2, Edit, Plus,
+  LogOut, Upload, Check, AlertCircle, Loader2, Key
+} from "lucide-react";
+import { Service, BeforeAfterProject, GalleryItem, TeamMember, Testimonial, ContactSubmission, SampleRequest, WebsiteSettings } from "../types";
+
+interface AdminDashboardProps {
+  onClose: () => void;
+  onRefreshData: () => void;
+  services: Service[];
+  beforeAfter: BeforeAfterProject[];
+  gallery: GalleryItem[];
+  team: TeamMember[];
+  testimonials: Testimonial[];
+  settings: WebsiteSettings;
+}
+
+type TabType = "analytics" | "gallery" | "beforeafter" | "team" | "services" | "testimonials" | "contacts" | "settings";
+
+export default function AdminDashboard({
+  onClose,
+  onRefreshData,
+  services: initialServices,
+  beforeAfter: initialBA,
+  gallery: initialGallery,
+  team: initialTeam,
+  testimonials: initialTestimonials,
+  settings: initialSettings
+}: AdminDashboardProps) {
+  const [activeTab, setActiveTab] = useState<TabType>("analytics");
+  
+  // Local reactive states
+  const [services, setServices] = useState<Service[]>(initialServices);
+  const [beforeAfter, setBeforeAfter] = useState<BeforeAfterProject[]>(initialBA);
+  const [gallery, setGallery] = useState<GalleryItem[]>(initialGallery);
+  const [team, setTeam] = useState<TeamMember[]>(initialTeam);
+  const [testimonials, setTestimonials] = useState<Testimonial[]>(initialTestimonials);
+  const [settings, setSettings] = useState<WebsiteSettings>(initialSettings);
+
+  // Sync local states with incoming props from App component
+  useEffect(() => {
+    setServices(initialServices);
+  }, [initialServices]);
+
+  useEffect(() => {
+    setBeforeAfter(initialBA);
+  }, [initialBA]);
+
+  useEffect(() => {
+    setGallery(initialGallery);
+  }, [initialGallery]);
+
+  useEffect(() => {
+    setTeam(initialTeam);
+  }, [initialTeam]);
+
+  useEffect(() => {
+    setTestimonials(initialTestimonials);
+  }, [initialTestimonials]);
+
+  useEffect(() => {
+    setSettings(initialSettings);
+  }, [initialSettings]);
+  
+  // Logs states
+  const [contacts, setContacts] = useState<ContactSubmission[]>([]);
+  const [samples, setSamples] = useState<SampleRequest[]>([]);
+  
+  // Forms & Modal states
+  const [isSaving, setIsSaving] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [msg, setMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+  // Password reset state
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+
+  // Custom Deletion Confirmation Modal state to avoid window.confirm inside sandboxed iframe
+  const [deleteConfirm, setDeleteConfirm] = useState<{
+    type: TabType | "contacts" | "samples";
+    id: string;
+    title?: string;
+  } | null>(null);
+
+  // Create modals state
+  const [showAddGallery, setShowAddGallery] = useState(false);
+  const [galleryTitle, setGalleryTitle] = useState("");
+  const [galleryCategory, setGalleryCategory] = useState("Jewelry Retouching");
+  const [galleryImageUrl, setGalleryImageUrl] = useState("");
+  const [galleryDesc, setGalleryDesc] = useState("");
+
+  // Before After modals state
+  const [showAddBA, setShowAddBA] = useState(false);
+  const [baTitle, setBaTitle] = useState("");
+  const [baCategory, setBaCategory] = useState("Jewelry Retouching");
+  const [baDesc, setBaDesc] = useState("");
+  const [baBeforeUrl, setBaBeforeUrl] = useState("");
+  const [baAfterUrl, setBaAfterUrl] = useState("");
+  const [baServicesApplied, setBaServicesApplied] = useState("");
+
+  // Team modals state
+  const [showAddTeam, setShowAddTeam] = useState(false);
+  const [teamName, setTeamName] = useState("");
+  const [teamRole, setTeamRole] = useState("");
+  const [teamImageUrl, setTeamImageUrl] = useState("");
+  const [teamExpertise, setTeamExpertise] = useState("");
+  const [teamIsCore, setTeamIsCore] = useState(false);
+
+  // Service modal state
+  const [showAddService, setShowAddService] = useState(false);
+  const [serviceTitle, setServiceTitle] = useState("");
+  const [serviceDesc, setServiceDesc] = useState("");
+  const [serviceBenefits, setServiceBenefits] = useState("");
+  const [serviceIcon, setServiceIcon] = useState("Sparkles");
+  const [servicePrice, setServicePrice] = useState("");
+
+  // Fetch log contents
+  useEffect(() => {
+    fetchLogs();
+  }, []);
+
+  const fetchLogs = async () => {
+    try {
+      const cRes = await fetch("/api/contacts");
+      const cData = await cRes.json();
+      setContacts(cData);
+
+      const sRes = await fetch("/api/samples");
+      const sData = await sRes.json();
+      setSamples(sData);
+    } catch (err) {
+      console.error("Failed to fetch logs", err);
+    }
+  };
+
+  const handleFileUpload = async (e: ChangeEvent<HTMLInputElement>, callback: (url: string) => void) => {
+    if (!e.target.files || !e.target.files[0]) return;
+    const file = e.target.files[0];
+    setIsUploading(true);
+    setMsg(null);
+
+    const reader = new FileReader();
+    reader.onload = async () => {
+      try {
+        const res = await fetch("/api/upload", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: file.name, data: reader.result as string })
+        });
+        const data = await res.json();
+        if (data.success) {
+          callback(data.url);
+          setMsg({ type: "success", text: `File ${file.name} uploaded successfully.` });
+        } else {
+          setMsg({ type: "error", text: "Upload failed on backend." });
+        }
+      } catch (err) {
+        setMsg({ type: "error", text: "File upload failed on network." });
+      } finally {
+        setIsUploading(false);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Delete Handlers
+  const handleDeleteItem = async (type: TabType, id: string) => {
+    try {
+      const res = await fetch(`/api/${type}/${id}`, { method: "DELETE" });
+      const data = await res.json();
+      if (data.success) {
+        setMsg({ type: "success", text: "Content deleted successfully." });
+        // Refresh local state
+        if (type === "gallery") setGallery(gallery.filter(g => g.id !== id));
+        if (type === "beforeafter") setBeforeAfter(beforeAfter.filter(b => b.id !== id));
+        if (type === "team") setTeam(team.filter(t => t.id !== id));
+        if (type === "services") setServices(services.filter(s => s.id !== id));
+        onRefreshData();
+      } else {
+        setMsg({ type: "error", text: "Delete request failed." });
+      }
+    } catch (err) {
+      setMsg({ type: "error", text: "Failed to connect to backend deletion." });
+    }
+  };
+
+  const confirmDeletion = async () => {
+    if (!deleteConfirm) return;
+    const { type, id } = deleteConfirm;
+    setDeleteConfirm(null);
+    if (type === "contacts" || type === "samples") {
+      await handleDeleteLog(id, type);
+    } else {
+      await handleDeleteItem(type, id);
+    }
+  };
+
+  // Add Item Submitters
+  const handleAddGallerySubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!galleryImageUrl) {
+      setMsg({ type: "error", text: "Please upload or provide an image URL first." });
+      return;
+    }
+    setIsSaving(true);
+    try {
+      const res = await fetch("/api/gallery", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: galleryTitle,
+          category: galleryCategory,
+          imageUrl: galleryImageUrl,
+          description: galleryDesc
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setGallery([...gallery, data.item]);
+        setShowAddGallery(false);
+        setGalleryTitle("");
+        setGalleryImageUrl("");
+        setGalleryDesc("");
+        setMsg({ type: "success", text: "Gallery item added successfully!" });
+        onRefreshData();
+      }
+    } catch (err) {
+      setMsg({ type: "error", text: "Failed to save gallery item." });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleAddBASubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!baBeforeUrl || !baAfterUrl) {
+      setMsg({ type: "error", text: "Please upload both Before and After images." });
+      return;
+    }
+    setIsSaving(true);
+    const servicesList = baServicesApplied.split(",").map(s => s.trim()).filter(Boolean);
+    try {
+      const res = await fetch("/api/beforeafter", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: baTitle,
+          category: baCategory,
+          description: baDesc,
+          beforeUrl: baBeforeUrl,
+          afterUrl: baAfterUrl,
+          servicesApplied: servicesList
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setBeforeAfter([...beforeAfter, data.project]);
+        setShowAddBA(false);
+        setBaTitle("");
+        setBaBeforeUrl("");
+        setBaAfterUrl("");
+        setBaDesc("");
+        setBaServicesApplied("");
+        setMsg({ type: "success", text: "Before/After comparison project created!" });
+        onRefreshData();
+      }
+    } catch (err) {
+      setMsg({ type: "error", text: "Failed to save comparison project." });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleAddTeamSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!teamImageUrl) {
+      setMsg({ type: "error", text: "Please upload a team avatar image." });
+      return;
+    }
+    setIsSaving(true);
+    const expertiseList = teamExpertise.split(",").map(e => e.trim()).filter(Boolean);
+    try {
+      const res = await fetch("/api/team", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: teamName,
+          role: teamRole,
+          imageUrl: teamImageUrl,
+          expertise: expertiseList,
+          isCore: teamIsCore
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setTeam([...team, data.member]);
+        setShowAddTeam(false);
+        setTeamName("");
+        setTeamRole("");
+        setTeamImageUrl("");
+        setTeamExpertise("");
+        setTeamIsCore(false);
+        setMsg({ type: "success", text: "Team specialist profile created!" });
+        onRefreshData();
+      }
+    } catch (err) {
+      setMsg({ type: "error", text: "Failed to create team member." });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleAddServiceSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    setIsSaving(true);
+    const benefitsList = serviceBenefits.split(",").map(b => b.trim()).filter(Boolean);
+    try {
+      const res = await fetch("/api/services", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: serviceTitle,
+          description: serviceDesc,
+          benefits: benefitsList,
+          iconName: serviceIcon,
+          price: servicePrice
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setServices([...services, data.service]);
+        setShowAddService(false);
+        setServiceTitle("");
+        setServiceDesc("");
+        setServiceBenefits("");
+        setServicePrice("");
+        setMsg({ type: "success", text: "Service category created successfully!" });
+        onRefreshData();
+      }
+    } catch (err) {
+      setMsg({ type: "error", text: "Failed to create service." });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Settings Save Handler
+  const handleSaveSettings = async (e: FormEvent) => {
+    e.preventDefault();
+    setIsSaving(true);
+    setMsg(null);
+    try {
+      const res = await fetch("/api/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(settings)
+      });
+      const data = await res.json();
+      if (data.success) {
+        setSettings(data.settings);
+        setMsg({ type: "success", text: "Website Settings and SEO tags updated in real-time!" });
+        onRefreshData();
+      }
+    } catch (err) {
+      setMsg({ type: "error", text: "Failed to update configuration." });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Change Password
+  const handleChangePassword = (e: FormEvent) => {
+    e.preventDefault();
+    if (currentPassword === "mahatab" && newPassword.length >= 4) {
+      setMsg({ type: "success", text: "Password changed successfully (simulated session)." });
+      setCurrentPassword("");
+      setNewPassword("");
+    } else {
+      setMsg({ type: "error", text: "Invalid current password, or new password is too short (min 4 chars)." });
+    }
+  };
+
+  // Inquiries handlers
+  const handleDeleteLog = async (id: string, logType: "contacts" | "samples") => {
+    try {
+      const res = await fetch(`/api/${logType}/${id}`, { method: "DELETE" });
+      const data = await res.json();
+      if (data.success) {
+        if (logType === "contacts") {
+          setContacts(contacts.filter(c => c.id !== id));
+        } else {
+          setSamples(samples.filter(s => s.id !== id));
+        }
+        setMsg({ type: "success", text: "Submission log deleted." });
+      }
+    } catch (err) {
+      setMsg({ type: "error", text: "Deletion failed." });
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 bg-[#050505] flex flex-col md:flex-row text-left font-sans text-gray-300">
+      
+      {/* LEFT SIDEBAR (Navigation) */}
+      <div className="w-full md:w-64 bg-[#0a0a0a] border-b md:border-b-0 md:border-r border-[#d4af37]/15 flex flex-col justify-between shrink-0">
+        <div>
+          {/* Logo Heading */}
+          <div className="h-20 border-b border-[#d4af37]/10 flex items-center px-6 gap-3">
+            <div className="w-6 h-6 border border-[#d4af37] rotate-45 flex items-center justify-center">
+              <span className="text-[#d4af37] text-[9px] -rotate-45 font-bold">M</span>
+            </div>
+            <div>
+              <p className="font-brand font-semibold text-xs tracking-[0.2em] text-[#d4af37] leading-none">PERFECTION</p>
+              <p className="font-mono text-[9px] text-gray-500 tracking-widest mt-1 uppercase">CMS Panel</p>
+            </div>
+          </div>
+
+          {/* Module Nav Links */}
+          <div className="p-4 space-y-1" id="admin-module-links">
+            <button 
+              onClick={() => setActiveTab("analytics")}
+              className={`w-full py-3 px-4 rounded text-xs uppercase tracking-wider font-semibold transition-all flex items-center gap-3 ${activeTab === "analytics" ? "bg-[#d4af37] text-black" : "hover:bg-white/5 text-gray-400"}`}
+            >
+              <BarChart className="w-4 h-4 shrink-0" />
+              Analytics
+            </button>
+
+            <button 
+              onClick={() => setActiveTab("gallery")}
+              className={`w-full py-3 px-4 rounded text-xs uppercase tracking-wider font-semibold transition-all flex items-center gap-3 ${activeTab === "gallery" ? "bg-[#d4af37] text-black" : "hover:bg-white/5 text-gray-400"}`}
+            >
+              <Image className="w-4 h-4 shrink-0" />
+              Gallery Expose
+            </button>
+
+            <button 
+              onClick={() => setActiveTab("beforeafter")}
+              className={`w-full py-3 px-4 rounded text-xs uppercase tracking-wider font-semibold transition-all flex items-center gap-3 ${activeTab === "beforeafter" ? "bg-[#d4af37] text-black" : "hover:bg-white/5 text-gray-400"}`}
+            >
+              <MoveHorizontal className="w-4 h-4 shrink-0" />
+              Before/After
+            </button>
+
+            <button 
+              onClick={() => setActiveTab("services")}
+              className={`w-full py-3 px-4 rounded text-xs uppercase tracking-wider font-semibold transition-all flex items-center gap-3 ${activeTab === "services" ? "bg-[#d4af37] text-black" : "hover:bg-white/5 text-gray-400"}`}
+            >
+              <Layers className="w-4 h-4 shrink-0" />
+              Services list
+            </button>
+
+            <button 
+              onClick={() => setActiveTab("team")}
+              className={`w-full py-3 px-4 rounded text-xs uppercase tracking-wider font-semibold transition-all flex items-center gap-3 ${activeTab === "team" ? "bg-[#d4af37] text-black" : "hover:bg-white/5 text-gray-400"}`}
+            >
+              <Users className="w-4 h-4 shrink-0" />
+              Team specialists
+            </button>
+
+            <button 
+              onClick={() => setActiveTab("contacts")}
+              className={`w-full py-3 px-4 rounded text-xs uppercase tracking-wider font-semibold transition-all flex items-center gap-3 ${activeTab === "contacts" ? "bg-[#d4af37] text-black" : "hover:bg-white/5 text-gray-400"}`}
+            >
+              <MessageSquare className="w-4 h-4 shrink-0" />
+              Inquiry Logs ({contacts.length + samples.length})
+            </button>
+
+            <button 
+              onClick={() => setActiveTab("settings")}
+              className={`w-full py-3 px-4 rounded text-xs uppercase tracking-wider font-semibold transition-all flex items-center gap-3 ${activeTab === "settings" ? "bg-[#d4af37] text-black" : "hover:bg-white/5 text-gray-400"}`}
+            >
+              <Settings className="w-4 h-4 shrink-0" />
+              Settings & SEO
+            </button>
+          </div>
+        </div>
+
+        {/* Bottom Profile and Exit button */}
+        <div className="p-4 border-t border-white/5 bg-[#080808]">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-8 h-8 rounded-full bg-[#d4af37]/10 border border-[#d4af37]/30 flex items-center justify-center text-[#d4af37] font-bold text-xs">
+              MM
+            </div>
+            <div>
+              <p className="text-xs font-semibold text-white leading-none">M.R Mahatab</p>
+              <p className="text-[10px] text-gray-500 mt-1">Super Administrator</p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-full py-2 border border-red-900/40 bg-red-950/20 hover:bg-red-950/40 text-red-400 rounded text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-1.5"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+            Exit Dashboard
+          </button>
+        </div>
+      </div>
+
+      {/* CENTRAL STAGE (Content Viewport) */}
+      <div className="flex-1 flex flex-col min-w-0 bg-[#080808]">
+        
+        {/* Top Header info */}
+        <div className="h-20 border-b border-white/5 flex items-center justify-between px-6 sm:px-10 shrink-0">
+          <div>
+            <h2 className="font-display text-base sm:text-lg font-semibold text-white uppercase tracking-wider">
+              {activeTab === "analytics" && "Dashboard Performance Insights"}
+              {activeTab === "gallery" && "Portfolio Image exhibition manager"}
+              {activeTab === "beforeafter" && "Before/After Comparison Stage"}
+              {activeTab === "services" && "Professional Service Catalog Builder"}
+              {activeTab === "team" && "Image Specialists profiles"}
+              {activeTab === "contacts" && "Client Inquiry submissions"}
+              {activeTab === "settings" && "General Settings & Global SEO tags"}
+            </h2>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <span className="hidden sm:inline-block w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse" />
+            <span className="hidden sm:inline-block font-sans text-xs text-gray-400 font-light">Cloud Database Synchronized</span>
+          </div>
+        </div>
+
+        {/* Global Action Messages */}
+        {msg && (
+          <div className={`mx-6 sm:mx-10 mt-6 p-4 border rounded flex items-center justify-between gap-3 ${msg.type === "success" ? "border-green-500/20 bg-green-500/5 text-green-400" : "border-red-500/20 bg-red-500/5 text-red-400"}`}>
+            <span className="text-xs font-sans leading-relaxed font-light">{msg.text}</span>
+            <button onClick={() => setMsg(null)} className="text-xs uppercase tracking-wider hover:text-white font-bold">Dismiss</button>
+          </div>
+        )}
+
+        {/* Active Stage Panel View */}
+        <div className="flex-1 overflow-y-auto p-6 sm:p-10">
+
+          {/* 1. ANALYTICS PANEL */}
+          {activeTab === "analytics" && (
+            <div className="space-y-8 animate-fade-in" id="panel-analytics">
+              {/* Stats Overview */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div className="glass-panel p-6 rounded-lg relative overflow-hidden">
+                  <p className="font-sans text-[10px] text-gray-500 uppercase tracking-widest">Gallery Portfolio</p>
+                  <p className="font-display text-3xl font-bold text-white mt-1">{gallery.length} Images</p>
+                  <span className="text-[10px] text-gray-500 block mt-2">Visible on exhibition grid</span>
+                </div>
+
+                <div className="glass-panel p-6 rounded-lg relative overflow-hidden">
+                  <p className="font-sans text-[10px] text-gray-500 uppercase tracking-widest">Slider Projects</p>
+                  <p className="font-display text-3xl font-bold text-white mt-1">{beforeAfter.length} Sets</p>
+                  <span className="text-[10px] text-gray-500 block mt-2">Active before/after sliders</span>
+                </div>
+
+                <div className="glass-panel p-6 rounded-lg relative overflow-hidden">
+                  <p className="font-sans text-[10px] text-gray-500 uppercase tracking-widest">Inquiry Logs</p>
+                  <p className="font-display text-3xl font-bold text-white mt-1">{contacts.length} Logs</p>
+                  <span className="text-[10px] text-[#d4af37] block mt-2">Real-time leads from contact</span>
+                </div>
+
+                <div className="glass-panel p-6 rounded-lg relative overflow-hidden border-green-500/25 bg-green-500/5">
+                  <p className="font-sans text-[10px] text-green-400 uppercase tracking-widest">Free Sample Requests</p>
+                  <p className="font-display text-3xl font-bold text-green-400 mt-1">{samples.length} Leads</p>
+                  <span className="text-[10px] text-green-400/70 block mt-2">Awaiting QC retouching file</span>
+                </div>
+              </div>
+
+              {/* CRM / CMS Operations logs overview */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                
+                {/* Recent Inquiries List */}
+                <div className="glass-panel p-6 rounded-lg">
+                  <h3 className="font-display text-sm font-semibold text-white uppercase tracking-wider mb-4 border-b border-white/5 pb-2">
+                    Recent Contact Inquiries
+                  </h3>
+                  {contacts.length === 0 ? (
+                    <p className="text-xs text-gray-500 italic py-8 text-center">No inquiry form submissions received yet.</p>
+                  ) : (
+                    <div className="space-y-4 max-h-[300px] overflow-y-auto">
+                      {contacts.slice(-5).reverse().map((cnt) => (
+                        <div key={cnt.id} className="p-3 bg-white/2 border border-white/5 rounded text-left">
+                          <div className="flex items-center justify-between text-xs mb-1">
+                            <span className="font-semibold text-white">{cnt.name} ({cnt.company || "No Company"})</span>
+                            <span className="text-[10px] text-gray-500">{new Date(cnt.date).toLocaleDateString()}</span>
+                          </div>
+                          <p className="font-mono text-[10px] text-[#d4af37]">{cnt.projectType}</p>
+                          <p className="text-[11px] text-gray-400 italic truncate mt-1">"{cnt.message}"</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Recent Free Sample Requests */}
+                <div className="glass-panel p-6 rounded-lg">
+                  <h3 className="font-display text-sm font-semibold text-white uppercase tracking-wider mb-4 border-b border-white/5 pb-2">
+                    Recent Free Sample Requests
+                  </h3>
+                  {samples.length === 0 ? (
+                    <p className="text-xs text-gray-500 italic py-8 text-center">No free sample edit requests received yet.</p>
+                  ) : (
+                    <div className="space-y-4 max-h-[300px] overflow-y-auto">
+                      {samples.slice(-5).reverse().map((smp) => (
+                        <div key={smp.id} className="p-3 bg-[#d4af37]/5 border border-[#d4af37]/10 rounded text-left">
+                          <div className="flex items-center justify-between text-xs mb-1">
+                            <span className="font-semibold text-[#d4af37]">{smp.name}</span>
+                            <span className="text-[10px] text-gray-500">{new Date(smp.date).toLocaleDateString()}</span>
+                          </div>
+                          <p className="font-sans text-[10px] text-gray-400">Email: {smp.email} | WhatsApp: {smp.whatsapp}</p>
+                          <p className="text-[11px] text-gray-400 italic truncate mt-1">"{smp.message || "No instructions provided."}"</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+              </div>
+            </div>
+          )}
+
+          {/* 2. GALLERY MANAGER PANEL */}
+          {activeTab === "gallery" && (
+            <div className="space-y-6 animate-fade-in" id="panel-gallery">
+              <div className="flex justify-between items-center">
+                <h3 className="font-display text-sm font-semibold text-white uppercase tracking-wider">Exhibition Portfolio Inventory</h3>
+                <button
+                  onClick={() => setShowAddGallery(true)}
+                  className="px-4 py-2 bg-[#d4af37] text-black font-semibold font-sans text-xs uppercase tracking-wider rounded-sm flex items-center gap-1.5 hover:brightness-110"
+                >
+                  <Plus className="w-4 h-4" />
+                  Add Portfolio Piece
+                </button>
+              </div>
+
+              {/* Add Modal */}
+              {showAddGallery && (
+                <form onSubmit={handleAddGallerySubmit} className="p-6 bg-[#0c0c0c] border border-[#d4af37]/30 rounded-lg space-y-4 text-left">
+                  <h4 className="font-display text-sm font-semibold text-white uppercase tracking-wider">Upload New Portfolio Masterpiece</h4>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-[10px] uppercase text-gray-400 font-sans mb-1 font-semibold">Title</label>
+                      <input 
+                        type="text" required value={galleryTitle} onChange={(e) => setGalleryTitle(e.target.value)}
+                        placeholder="e.g. Diamond Wedding Tiara"
+                        className="w-full py-2 px-3 bg-white/3 border border-white/10 text-white rounded font-sans text-xs focus:border-[#d4af37] focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] uppercase text-gray-400 font-sans mb-1 font-semibold">Category</label>
+                      <select 
+                        value={galleryCategory} onChange={(e) => setGalleryCategory(e.target.value)}
+                        className="w-full py-2 px-3 bg-[#0c0c0c] border border-white/10 text-white rounded font-sans text-xs focus:border-[#d4af37] focus:outline-none"
+                      >
+                        <option value="Jewelry Retouching">Jewelry Retouching</option>
+                        <option value="Background Removal">Background Removal</option>
+                        <option value="Diamond Enhancement">Diamond Enhancement</option>
+                        <option value="Product Editing">Product Editing</option>
+                        <option value="Color Correction">Color Correction</option>
+                        <option value="Luxury Retouching">Luxury Retouching</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] uppercase text-gray-400 font-sans mb-1 font-semibold">Brief Description</label>
+                    <input 
+                      type="text" value={galleryDesc} onChange={(e) => setGalleryDesc(e.target.value)}
+                      placeholder="e.g. Complex background separation and prong shine enhancements"
+                      className="w-full py-2 px-3 bg-white/3 border border-white/10 text-white rounded font-sans text-xs focus:border-[#d4af37] focus:outline-none"
+                    />
+                  </div>
+
+                  {/* Image upload widget */}
+                  <div>
+                    <label className="block text-[10px] uppercase text-gray-400 font-sans mb-1.5 font-semibold">Exhibition Image file</label>
+                    <div className="flex items-center gap-4">
+                      <input 
+                        type="file" accept="image/*" onChange={(e) => handleFileUpload(e, setGalleryImageUrl)}
+                        className="text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-sm file:border-0 file:text-xs file:font-semibold file:bg-[#d4af37]/10 file:text-[#d4af37] hover:file:bg-[#d4af37]/20"
+                      />
+                      {isUploading && <Loader2 className="w-4 h-4 animate-spin text-[#d4af37]" />}
+                      {galleryImageUrl && <span className="text-xs text-green-400 truncate max-w-xs">✓ Image ready</span>}
+                    </div>
+                  </div>
+
+                  <div className="flex gap-3 pt-2">
+                    <button type="submit" disabled={isSaving || isUploading} className="px-5 py-2.5 bg-[#d4af37] text-black font-sans text-xs font-semibold uppercase tracking-wider">
+                      {isSaving ? "Saving..." : "Publish Exhibition Piece"}
+                    </button>
+                    <button type="button" onClick={() => setShowAddGallery(false)} className="px-5 py-2.5 border border-white/10 text-gray-400 text-xs font-sans uppercase tracking-wider">
+                      Cancel
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              {/* Inventory list */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {gallery.map((item) => (
+                  <div key={item.id} className="p-4 bg-[#111111] border border-white/5 rounded-lg flex gap-4 items-center justify-between">
+                    <div className="flex items-center gap-3 truncate">
+                      <div className="w-12 h-12 rounded bg-black flex items-center justify-center p-1 shrink-0">
+                        <img src={item.imageUrl} alt={item.title} className="max-w-full max-h-full object-contain" referrerPolicy="no-referrer" />
+                      </div>
+                      <div className="truncate text-left">
+                        <p className="text-xs font-semibold text-white truncate">{item.title}</p>
+                        <p className="text-[10px] text-gray-500 font-mono">{item.category}</p>
+                      </div>
+                    </div>
+                    <button 
+                      type="button"
+                      onClick={() => setDeleteConfirm({ type: "gallery", id: item.id, title: item.title })}
+                      className="p-2 border border-red-900/40 bg-red-950/20 text-red-400 hover:bg-red-950/40 rounded shrink-0 transition-all duration-200"
+                    >
+                      <Trash2 className="w-3.5 h-3.5 pointer-events-none" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* 3. BEFORE AFTER PANEL */}
+          {activeTab === "beforeafter" && (
+            <div className="space-y-6 animate-fade-in" id="panel-beforeafter">
+              <div className="flex justify-between items-center">
+                <h3 className="font-display text-sm font-semibold text-white uppercase tracking-wider">Comparison Sliders Inventory</h3>
+                <button
+                  onClick={() => setShowAddBA(true)}
+                  className="px-4 py-2 bg-[#d4af37] text-black font-semibold font-sans text-xs uppercase tracking-wider rounded-sm flex items-center gap-1.5 hover:brightness-110"
+                >
+                  <Plus className="w-4 h-4" />
+                  Add Comparison Slider
+                </button>
+              </div>
+
+              {/* Add Slider Form */}
+              {showAddBA && (
+                <form onSubmit={handleAddBASubmit} className="p-6 bg-[#0c0c0c] border border-[#d4af37]/30 rounded-lg space-y-4 text-left">
+                  <h4 className="font-display text-sm font-semibold text-white uppercase tracking-wider">Construct New Slider Segment</h4>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-[10px] uppercase text-gray-400 font-sans mb-1 font-semibold">Project Title</label>
+                      <input 
+                        type="text" required value={baTitle} onChange={(e) => setBaTitle(e.target.value)}
+                        placeholder="e.g. Royal Ruby Solitaire"
+                        className="w-full py-2 px-3 bg-white/3 border border-white/10 text-white rounded font-sans text-xs focus:border-[#d4af37]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] uppercase text-gray-400 font-sans mb-1 font-semibold">Category</label>
+                      <input 
+                        type="text" required value={baCategory} onChange={(e) => setBaCategory(e.target.value)}
+                        placeholder="e.g. Gemstone Enhancement"
+                        className="w-full py-2 px-3 bg-white/3 border border-white/10 text-white rounded font-sans text-xs focus:border-[#d4af37]"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] uppercase text-gray-400 font-sans mb-1 font-semibold">Description</label>
+                    <textarea 
+                      rows={2} required value={baDesc} onChange={(e) => setBaDesc(e.target.value)}
+                      placeholder="Detail what adjustments were executed on the raw file..."
+                      className="w-full py-2 px-3 bg-white/3 border border-white/10 text-white rounded font-sans text-xs focus:border-[#d4af37] resize-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] uppercase text-gray-400 font-sans mb-1 font-semibold">Actions Applied (Comma Separated)</label>
+                    <input 
+                      type="text" required value={baServicesApplied} onChange={(e) => setBaServicesApplied(e.target.value)}
+                      placeholder="e.g. Prong Shine, Metal Polish, Hue Correction"
+                      className="w-full py-2 px-3 bg-white/3 border border-white/10 text-white rounded font-sans text-xs focus:border-[#d4af37]"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-[10px] uppercase text-gray-400 font-sans mb-1.5 font-semibold">Before (Raw Image File)</label>
+                      <input 
+                        type="file" accept="image/*" onChange={(e) => handleFileUpload(e, setBaBeforeUrl)}
+                        className="text-xs file:bg-[#d4af37]/10 file:text-[#d4af37]"
+                      />
+                      {baBeforeUrl && <span className="text-[10px] text-green-400 block mt-1">✓ Before file ready</span>}
+                    </div>
+                    <div>
+                      <label className="block text-[10px] uppercase text-gray-400 font-sans mb-1.5 font-semibold">After (Retouched Image File)</label>
+                      <input 
+                        type="file" accept="image/*" onChange={(e) => handleFileUpload(e, setBaAfterUrl)}
+                        className="text-xs file:bg-[#d4af37]/10 file:text-[#d4af37]"
+                      />
+                      {baAfterUrl && <span className="text-[10px] text-green-400 block mt-1">✓ After file ready</span>}
+                    </div>
+                  </div>
+
+                  <div className="flex gap-3 pt-2">
+                    <button type="submit" disabled={isSaving || isUploading} className="px-5 py-2.5 bg-[#d4af37] text-black font-sans text-xs font-semibold uppercase tracking-wider">
+                      Create Slider Segment
+                    </button>
+                    <button type="button" onClick={() => setShowAddBA(false)} className="px-5 py-2.5 border border-white/10 text-gray-400 text-xs font-sans uppercase tracking-wider">
+                      Cancel
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              {/* Slider inventory */}
+              <div className="space-y-4">
+                {beforeAfter.map((project) => (
+                  <div key={project.id} className="p-4 bg-[#111111] border border-white/5 rounded-lg flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+                    <div className="flex items-center gap-4 text-left">
+                      <div className="flex gap-1 bg-black p-1 border border-white/5 rounded">
+                        <img src={project.beforeUrl} className="w-8 h-8 object-contain shrink-0" referrerPolicy="no-referrer" />
+                        <img src={project.afterUrl} className="w-8 h-8 object-contain shrink-0" referrerPolicy="no-referrer" />
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-semibold text-white">{project.title}</h4>
+                        <p className="text-[10px] text-[#d4af37] font-mono">{project.category}</p>
+                        <p className="text-[11px] text-gray-500 max-w-lg mt-1 truncate">{project.description}</p>
+                      </div>
+                    </div>
+                    <button 
+                      type="button"
+                      onClick={() => setDeleteConfirm({ type: "beforeafter", id: project.id, title: project.title })}
+                      className="p-2 border border-red-900/40 bg-red-950/20 text-red-400 hover:bg-red-950/40 rounded self-end sm:self-auto shrink-0 transition-all duration-200"
+                    >
+                      <Trash2 className="w-3.5 h-3.5 pointer-events-none" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* 4. SERVICES PANEL */}
+          {activeTab === "services" && (
+            <div className="space-y-6 animate-fade-in" id="panel-services">
+              <div className="flex justify-between items-center">
+                <h3 className="font-display text-sm font-semibold text-white uppercase tracking-wider">Services List Catalog</h3>
+                <button
+                  onClick={() => setShowAddService(true)}
+                  className="px-4 py-2 bg-[#d4af37] text-black font-semibold font-sans text-xs uppercase tracking-wider rounded-sm flex items-center gap-1.5 hover:brightness-110"
+                >
+                  <Plus className="w-4 h-4" />
+                  Add Service Category
+                </button>
+              </div>
+
+              {/* Add form */}
+              {showAddService && (
+                <form onSubmit={handleAddServiceSubmit} className="p-6 bg-[#0c0c0c] border border-[#d4af37]/30 rounded-lg space-y-4 text-left">
+                  <h4 className="font-display text-sm font-semibold text-white uppercase tracking-wider">Build Service Node</h4>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-[10px] uppercase text-gray-400 font-sans mb-1 font-semibold">Service Title</label>
+                      <input 
+                        type="text" required value={serviceTitle} onChange={(e) => setServiceTitle(e.target.value)}
+                        placeholder="e.g. Pearl Luster Tuning"
+                        className="w-full py-2 px-3 bg-white/3 border border-white/10 text-white rounded font-sans text-xs focus:border-[#d4af37]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] uppercase text-gray-400 font-sans mb-1 font-semibold">Price tag label</label>
+                      <input 
+                        type="text" value={servicePrice} onChange={(e) => setServicePrice(e.target.value)}
+                        placeholder="e.g. From $3.00 / image"
+                        className="w-full py-2 px-3 bg-white/3 border border-white/10 text-white rounded font-sans text-xs focus:border-[#d4af37]"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] uppercase text-gray-400 font-sans mb-1 font-semibold">Detailed Description</label>
+                    <textarea 
+                      rows={3} required value={serviceDesc} onChange={(e) => setServiceDesc(e.target.value)}
+                      placeholder="Explain the technical scope and details..."
+                      className="w-full py-2 px-3 bg-white/3 border border-white/10 text-white rounded font-sans text-xs focus:border-[#d4af37] resize-none"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-[10px] uppercase text-gray-400 font-sans mb-1 font-semibold">Bullet Benefits (Comma Separated)</label>
+                      <input 
+                        type="text" required value={serviceBenefits} onChange={(e) => setServiceBenefits(e.target.value)}
+                        placeholder="e.g. Satin sheen polish, scratch removal, high alignment"
+                        className="w-full py-2 px-3 bg-white/3 border border-white/10 text-white rounded font-sans text-xs focus:border-[#d4af37]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] uppercase text-gray-400 font-sans mb-1 font-semibold">Icon mapping</label>
+                      <select 
+                        value={serviceIcon} onChange={(e) => setServiceIcon(e.target.value)}
+                        className="w-full py-2 px-3 bg-[#0c0c0c] border border-white/10 text-white rounded font-sans text-xs focus:border-[#d4af37]"
+                      >
+                        <option value="Sparkles">Sparkles</option>
+                        <option value="Scissors">Scissors</option>
+                        <option value="Gem">Gemstone</option>
+                        <option value="Zap">Zap/Lightning</option>
+                        <option value="Sun">Sun/Reflections</option>
+                        <option value="Paintbrush">Paintbrush</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-3 pt-2">
+                    <button type="submit" disabled={isSaving} className="px-5 py-2.5 bg-[#d4af37] text-black font-sans text-xs font-semibold uppercase tracking-wider">
+                      Create Service Node
+                    </button>
+                    <button type="button" onClick={() => setShowAddService(false)} className="px-5 py-2.5 border border-white/10 text-gray-400 text-xs font-sans uppercase tracking-wider">
+                      Cancel
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              {/* Service list inventory */}
+              <div className="space-y-4">
+                {services.map((service) => (
+                  <div key={service.id} className="p-4 bg-[#111111] border border-white/5 rounded-lg flex justify-between items-center text-left">
+                    <div>
+                      <h4 className="text-xs font-semibold text-white uppercase tracking-wider">{service.title}</h4>
+                      <p className="text-[10px] text-[#d4af37] mt-0.5">{service.price || "Contact for Quote"}</p>
+                      <p className="text-[11px] text-gray-500 max-w-xl mt-1.5 leading-relaxed">{service.description}</p>
+                    </div>
+                    <button 
+                      type="button"
+                      onClick={() => setDeleteConfirm({ type: "services", id: service.id, title: service.title })}
+                      className="p-2 border border-red-900/40 bg-red-950/20 text-red-400 hover:bg-red-950/40 rounded shrink-0 ml-4 transition-all duration-200"
+                    >
+                      <Trash2 className="w-3.5 h-3.5 pointer-events-none" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* 5. TEAM PANEL */}
+          {activeTab === "team" && (
+            <div className="space-y-6 animate-fade-in" id="panel-team">
+              <div className="flex justify-between items-center">
+                <h3 className="font-display text-sm font-semibold text-white uppercase tracking-wider">Image Specialists Profiles</h3>
+                <button
+                  onClick={() => setShowAddTeam(true)}
+                  className="px-4 py-2 bg-[#d4af37] text-black font-semibold font-sans text-xs uppercase tracking-wider rounded-sm flex items-center gap-1.5 hover:brightness-110"
+                >
+                  <Plus className="w-4 h-4" />
+                  Add Team Profile
+                </button>
+              </div>
+
+              {/* Add form */}
+              {showAddTeam && (
+                <form onSubmit={handleAddTeamSubmit} className="p-6 bg-[#0c0c0c] border border-[#d4af37]/30 rounded-lg space-y-4 text-left">
+                  <h4 className="font-display text-sm font-semibold text-white uppercase tracking-wider">Register Specialist Profile</h4>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-[10px] uppercase text-gray-400 font-sans mb-1 font-semibold">Specialist Full Name</label>
+                      <input 
+                        type="text" required value={teamName} onChange={(e) => setTeamName(e.target.value)}
+                        placeholder="e.g. Mahfuz Islam"
+                        className="w-full py-2 px-3 bg-white/3 border border-white/10 text-white rounded font-sans text-xs focus:border-[#d4af37]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] uppercase text-gray-400 font-sans mb-1 font-semibold">Role / Title</label>
+                      <input 
+                        type="text" required value={teamRole} onChange={(e) => setTeamRole(e.target.value)}
+                        placeholder="e.g. Senior Metal polisher"
+                        className="w-full py-2 px-3 bg-white/3 border border-white/10 text-white rounded font-sans text-xs focus:border-[#d4af37]"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] uppercase text-gray-400 font-sans mb-1 font-semibold">Specialist Expertise tags (Comma Separated)</label>
+                    <input 
+                      type="text" required value={teamExpertise} onChange={(e) => setTeamExpertise(e.target.value)}
+                      placeholder="e.g. Gold polishing, shadow drafting, path clipping"
+                      className="w-full py-2 px-3 bg-white/3 border border-white/10 text-white rounded font-sans text-xs focus:border-[#d4af37]"
+                    />
+                  </div>
+
+                  <div className="flex items-center gap-6">
+                    <div className="flex-1">
+                      <label className="block text-[10px] uppercase text-gray-400 font-sans mb-1.5 font-semibold">Specialist Portrait Image</label>
+                      <input 
+                        type="file" accept="image/*" onChange={(e) => handleFileUpload(e, setTeamImageUrl)}
+                        className="text-xs file:bg-[#d4af37]/10 file:text-[#d4af37]"
+                      />
+                    </div>
+                    
+                    <label className="flex items-center gap-2 text-xs text-gray-400 cursor-pointer pt-4">
+                      <input 
+                        type="checkbox" checked={teamIsCore} onChange={(e) => setTeamIsCore(e.target.checked)}
+                        className="rounded accent-[#d4af37]"
+                      />
+                      <span>Is Core Team Leader / Supervisor</span>
+                    </label>
+                  </div>
+
+                  <div className="flex gap-3 pt-2">
+                    <button type="submit" disabled={isSaving || isUploading} className="px-5 py-2.5 bg-[#d4af37] text-black font-sans text-xs font-semibold uppercase tracking-wider">
+                      Register Specialist Profile
+                    </button>
+                    <button type="button" onClick={() => setShowAddTeam(false)} className="px-5 py-2.5 border border-white/10 text-gray-400 text-xs font-sans uppercase tracking-wider">
+                      Cancel
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              {/* Team list */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                {team.map((member) => (
+                  <div key={member.id} className="p-4 bg-[#111111] border border-white/5 rounded-lg flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-3 text-left">
+                      <img src={member.imageUrl} className="w-10 h-10 rounded-full object-cover shrink-0 bg-black" referrerPolicy="no-referrer" />
+                      <div>
+                        <h4 className="text-xs font-semibold text-white">{member.name}</h4>
+                        <p className="text-[10px] text-gray-500">{member.role} {member.isCore && "• Supervisor"}</p>
+                      </div>
+                    </div>
+                    <button 
+                      type="button"
+                      onClick={() => setDeleteConfirm({ type: "team", id: member.id, title: member.name })}
+                      className="p-2 border border-red-900/40 bg-red-950/20 text-red-400 hover:bg-red-950/40 rounded shrink-0 transition-all duration-200"
+                    >
+                      <Trash2 className="w-3.5 h-3.5 pointer-events-none" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* 6. CONTACTS & SAMPLE REQUESTS LOGS */}
+          {activeTab === "contacts" && (
+            <div className="space-y-10 animate-fade-in" id="panel-contacts">
+              
+              {/* Free Sample Edit Requests (HIGH VALUE LEADS) */}
+              <div className="space-y-4 text-left">
+                <h3 className="font-display text-sm font-semibold text-white uppercase tracking-wider border-b border-[#d4af37]/20 pb-2">
+                  Free Sample Edit Requests (Incoming Hot Leads)
+                </h3>
+
+                {samples.length === 0 ? (
+                  <p className="text-xs text-gray-500 italic py-8 text-center bg-white/2 rounded">No sample requests received.</p>
+                ) : (
+                  <div className="space-y-4">
+                    {samples.slice().reverse().map((smp) => (
+                      <div key={smp.id} className="p-5 bg-[#0e0e0e] border border-white/5 rounded-lg relative overflow-hidden">
+                        {/* Status Label */}
+                        <span className="font-mono text-[9px] tracking-widest uppercase bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2 py-0.5 rounded absolute top-5 right-5">
+                          {smp.status || "Pending"}
+                        </span>
+
+                        <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
+                          {/* Image Box (2 cols) */}
+                          <div className="md:col-span-2 text-center">
+                            <p className="text-[9px] uppercase tracking-widest text-gray-500 mb-1.5 font-bold">Client Raw File</p>
+                            <a 
+                              href={smp.beforeUrl} target="_blank" rel="noreferrer"
+                              className="w-16 h-16 bg-black rounded p-1 flex items-center justify-center mx-auto border border-white/10 hover:border-[#d4af37] transition-all"
+                            >
+                              <img src={smp.beforeUrl} alt="Sample Raw File" className="max-w-full max-h-full object-contain" referrerPolicy="no-referrer" />
+                            </a>
+                            <p className="text-[9px] text-gray-500 mt-1.5 truncate max-w-full italic">{smp.originalFileName || "Attachment"}</p>
+                          </div>
+
+                          {/* Client parameters (10 cols) */}
+                          <div className="md:col-span-10 text-left space-y-2">
+                            <p className="font-display text-sm font-semibold text-white">{smp.name}</p>
+                            
+                            <div className="text-xs text-gray-400 space-y-1 font-sans">
+                              <p>Email: <strong className="text-white select-all">{smp.email}</strong></p>
+                              <p>WhatsApp: <strong className="text-white select-all">{smp.whatsapp}</strong></p>
+                              <p>Submitted: <strong>{new Date(smp.date).toLocaleString()}</strong></p>
+                            </div>
+
+                            <div className="bg-black p-3 rounded border border-white/5 mt-2">
+                              <p className="text-[10px] uppercase tracking-widest text-gray-500 font-bold mb-1">Instructions:</p>
+                              <p className="font-sans text-xs text-gray-300 italic font-light">"{smp.message || "No instructions provided."}"</p>
+                            </div>
+
+                            <div className="flex gap-3 mt-4">
+                              <button 
+                                onClick={() => setDeleteConfirm({ type: "samples", id: smp.id, title: `Sample from ${smp.name}` })}
+                                className="px-3 py-1.5 border border-red-950 bg-red-950/10 text-red-400 text-[10px] uppercase tracking-wider rounded"
+                              >
+                                Delete Log
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Standard contact specifications */}
+              <div className="space-y-4 text-left">
+                <h3 className="font-display text-sm font-semibold text-white uppercase tracking-wider border-b border-[#d4af37]/20 pb-2">
+                  Official Project Inquiries (Bulk & Specs)
+                </h3>
+
+                {contacts.length === 0 ? (
+                  <p className="text-xs text-gray-500 italic py-8 text-center bg-white/2 rounded">No official project specifications received.</p>
+                ) : (
+                  <div className="space-y-4">
+                    {contacts.slice().reverse().map((cnt) => (
+                      <div key={cnt.id} className="p-5 bg-[#0e0e0e] border border-white/5 rounded-lg text-left relative">
+                        <span className="font-mono text-[9px] tracking-widest uppercase bg-green-500/10 text-green-400 border border-green-500/20 px-2.5 py-0.5 rounded absolute top-5 right-5">
+                          Inquiry
+                        </span>
+
+                        <div className="space-y-3">
+                          <h4 className="font-display text-sm font-semibold text-white">{cnt.name}</h4>
+                          <p className="font-mono text-[10px] text-[#d4af37]">{cnt.projectType}</p>
+                          
+                          <div className="text-xs text-gray-400 space-y-1 font-sans">
+                            <p>Company: <strong>{cnt.company || "No Company Specified"}</strong></p>
+                            <p>Email: <strong className="text-white select-all">{cnt.email}</strong></p>
+                            <p>WhatsApp: <strong className="text-white select-all">{cnt.whatsapp}</strong></p>
+                            <p>Submitted: <strong>{new Date(cnt.date).toLocaleString()}</strong></p>
+                          </div>
+
+                          <div className="bg-black p-3 rounded border border-white/5 mt-2">
+                            <p className="text-[10px] uppercase tracking-widest text-gray-500 font-bold mb-1">Project Brief:</p>
+                            <p className="font-sans text-xs text-gray-300 italic font-light">"{cnt.message}"</p>
+                          </div>
+
+                          {cnt.files && cnt.files.length > 0 && (
+                            <div className="mt-4 border-t border-white/5 pt-3">
+                              <p className="text-[10px] uppercase tracking-widest text-gray-500 font-bold mb-1.5">Attached Brief Files:</p>
+                              {cnt.files.map((file: any, fIdx: number) => (
+                                <a 
+                                  key={fIdx} href={file.data} target="_blank" rel="noreferrer"
+                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/5 hover:bg-white/10 text-xs text-gray-300 border border-white/5 hover:border-gold-500/35 rounded transition-all"
+                                >
+                                  <FileText className="w-3.5 h-3.5 text-[#d4af37]" />
+                                  <span className="truncate max-w-[200px]">{file.name || "Attachment"}</span>
+                                </a>
+                              ))}
+                            </div>
+                          )}
+
+                          <div className="pt-3 border-t border-white/5 mt-4">
+                            <button 
+                              onClick={() => setDeleteConfirm({ type: "contacts", id: cnt.id, title: `Inquiry from ${cnt.name}` })}
+                              className="px-3 py-1.5 border border-red-950 bg-red-950/10 text-red-400 text-[10px] uppercase tracking-wider rounded"
+                            >
+                              Delete Log
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+            </div>
+          )}
+
+          {/* 7. GENERAL CONFIGS AND SEO PANEL */}
+          {activeTab === "settings" && (
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 text-left animate-fade-in" id="panel-settings">
+              
+              {/* Settings parameters (7 cols) */}
+              <form onSubmit={handleSaveSettings} className="lg:col-span-7 space-y-6">
+                <h3 className="font-display text-sm font-semibold text-white uppercase tracking-wider border-b border-[#d4af37]/25 pb-2">
+                  Agency Coordinates & General settings
+                </h3>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] uppercase text-gray-400 font-sans mb-1 font-semibold">Support Email</label>
+                    <input 
+                      type="email" required value={settings.email} onChange={(e) => setSettings({ ...settings, email: e.target.value })}
+                      className="w-full py-2 px-3 bg-white/3 border border-white/10 text-white rounded font-sans text-xs focus:border-[#d4af37]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] uppercase text-gray-400 font-sans mb-1 font-semibold">Support WhatsApp</label>
+                    <input 
+                      type="text" required value={settings.phone} onChange={(e) => setSettings({ ...settings, phone: e.target.value })}
+                      className="w-full py-2 px-3 bg-white/3 border border-white/10 text-white rounded font-sans text-xs focus:border-[#d4af37]"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] uppercase text-gray-400 font-sans mb-1 font-semibold">Business Hours</label>
+                    <input 
+                      type="text" required value={settings.businessHours} onChange={(e) => setSettings({ ...settings, businessHours: e.target.value })}
+                      className="w-full py-2 px-3 bg-white/3 border border-white/10 text-white rounded font-sans text-xs focus:border-[#d4af37]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] uppercase text-gray-400 font-sans mb-1 font-semibold">Average Response Time</label>
+                    <input 
+                      type="text" required value={settings.responseTime} onChange={(e) => setSettings({ ...settings, responseTime: e.target.value })}
+                      className="w-full py-2 px-3 bg-white/3 border border-white/10 text-white rounded font-sans text-xs focus:border-[#d4af37]"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] uppercase text-gray-400 font-sans mb-1 font-semibold">Agency Address</label>
+                  <input 
+                    type="text" required value={settings.address} onChange={(e) => setSettings({ ...settings, address: e.target.value })}
+                    className="w-full py-2 px-3 bg-white/3 border border-white/10 text-white rounded font-sans text-xs focus:border-[#d4af37]"
+                  />
+                </div>
+
+                <h3 className="font-display text-sm font-semibold text-white uppercase tracking-wider border-b border-[#d4af37]/25 pb-2 pt-6">
+                  SEO Metadata Tags (Index tuning)
+                </h3>
+
+                <div>
+                  <label className="block text-[10px] uppercase text-gray-400 font-sans mb-1 font-semibold">Meta Title Tag</label>
+                  <input 
+                    type="text" required value={settings.metaTitle} onChange={(e) => setSettings({ ...settings, metaTitle: e.target.value })}
+                    className="w-full py-2 px-3 bg-white/3 border border-white/10 text-white rounded font-sans text-xs focus:border-[#d4af37]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] uppercase text-gray-400 font-sans mb-1 font-semibold">Meta Description Tag</label>
+                  <textarea 
+                    rows={3} required value={settings.metaDescription} onChange={(e) => setSettings({ ...settings, metaDescription: e.target.value })}
+                    className="w-full py-2 px-3 bg-white/3 border border-white/10 text-white rounded font-sans text-xs focus:border-[#d4af37] resize-none"
+                  />
+                </div>
+
+                <div className="pt-4">
+                  <button type="submit" disabled={isSaving} className="px-6 py-3 bg-[#d4af37] text-black font-sans font-semibold text-xs uppercase tracking-wider hover:brightness-110">
+                    {isSaving ? "Saving Configs..." : "Save Website Configuration"}
+                  </button>
+                </div>
+              </form>
+
+              {/* Password update (5 cols) */}
+              <div className="lg:col-span-5 space-y-6">
+                <form onSubmit={handleChangePassword} className="bg-[#0c0c0c] border border-white/5 p-6 rounded-lg space-y-4">
+                  <h4 className="font-display text-sm font-semibold text-white uppercase tracking-wider flex items-center gap-2 mb-2 border-b border-white/5 pb-2">
+                    <Key className="w-4 h-4 text-[#d4af37]" />
+                    Update credentials
+                  </h4>
+
+                  <div>
+                    <label className="block text-[10px] uppercase text-gray-400 font-sans mb-1 font-semibold">Current Password</label>
+                    <input 
+                      type="password" required value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)}
+                      placeholder="Enter current password"
+                      className="w-full py-2 px-3 bg-white/3 border border-white/10 text-white rounded font-sans text-xs focus:border-[#d4af37]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] uppercase text-gray-400 font-sans mb-1 font-semibold">New Password</label>
+                    <input 
+                      type="password" required value={newPassword} onChange={(e) => setNewPassword(e.target.value)}
+                      placeholder="Minimum 4 characters"
+                      className="w-full py-2 px-3 bg-white/3 border border-white/10 text-white rounded font-sans text-xs focus:border-[#d4af37]"
+                    />
+                  </div>
+
+                  <button type="submit" className="w-full py-2.5 border border-[#d4af37]/30 hover:border-[#d4af37] text-white font-sans text-xs uppercase tracking-wider bg-white/3 hover:bg-[#d4af37]/10 transition-all rounded">
+                    Update Password
+                  </button>
+                </form>
+              </div>
+
+            </div>
+          )}
+
+        </div>
+
+      </div>
+
+      {/* Custom Delete Confirmation Modal */}
+      {deleteConfirm && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/85 backdrop-blur-md p-4 animate-fade-in">
+          <div className="bg-[#0b0b0b] border border-red-500/20 max-w-sm w-full p-6 space-y-5 shadow-2xl relative text-left">
+            <div className="space-y-2">
+              <h3 className="font-display text-sm font-semibold text-white uppercase tracking-wider flex items-center gap-2">
+                <span className="w-1.5 h-1.5 bg-red-500 rounded-none animate-ping"></span>
+                Confirm Deletion
+              </h3>
+              <p className="font-sans text-xs text-gray-400 font-light leading-relaxed">
+                Are you absolutely sure you want to delete <strong className="text-white">"{deleteConfirm.title || 'this item'}"</strong>? This will permanently remove it from the database and is irreversible.
+              </p>
+            </div>
+            <div className="flex justify-end gap-3 font-sans text-xs pt-2">
+              <button
+                onClick={() => setDeleteConfirm(null)}
+                className="px-3.5 py-2 border border-white/10 text-gray-400 hover:text-white hover:bg-white/5 uppercase tracking-wider font-semibold transition-all rounded-none"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDeletion}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white uppercase tracking-wider font-semibold transition-all rounded-none"
+              >
+                Yes, Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+    </div>
+  );
+}

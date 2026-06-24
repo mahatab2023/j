@@ -1,0 +1,123 @@
+import { Sparkles, MessageSquare, ArrowUp, Mail, MapPin } from "lucide-react";
+
+interface FooterProps {
+  onNavigate: (sectionId: string) => void;
+  phone: string;
+  email: string;
+  address: string;
+  responseTime: string;
+}
+
+export default function Footer({ onNavigate, phone, email, address, responseTime }: FooterProps) {
+  const handleScrollTop = () => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const cleanPhone = phone.replace(/[^0-9+]/g, "");
+
+  return (
+    <footer className="bg-[#080808] border-t border-white/10 pt-16 pb-8 relative overflow-hidden text-left" id="footer-main">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-10 border-b border-white/10 pb-12 mb-12">
+          
+          {/* Brand Info (4 cols) */}
+          <div className="lg:col-span-4 flex flex-col items-start gap-4">
+            <div onClick={() => onNavigate("hero")} className="flex items-center gap-2 cursor-pointer group">
+              <img 
+                src="/logo.svg" 
+                alt="Jewelry Perfection" 
+                className="h-8 sm:h-9 w-auto object-contain transition-transform duration-300 group-hover:scale-102" 
+                referrerPolicy="no-referrer"
+              />
+            </div>
+            
+            <p className="font-sans text-xs text-gray-500 font-light leading-relaxed max-w-sm">
+              Jewelry Perfection is an international premium jewelry retouching agency with a dedicated collective of 25 professional editors. We turn catalog and raw camera photography into luxury sales drivers.
+            </p>
+            
+            <span className="font-sans text-[10px] uppercase tracking-widest text-[#D4AF37] px-2.5 py-1 rounded-none bg-white/5 border border-white/10">
+              Response Guarantee: {responseTime}
+            </span>
+          </div>
+
+          {/* Quick Links (2 cols) */}
+          <div className="lg:col-span-2 flex flex-col items-start">
+            <h4 className="font-display text-xs tracking-widest uppercase text-white font-medium mb-4">Sitemap</h4>
+            <div className="flex flex-col gap-2.5 font-sans text-xs text-gray-400 font-light">
+              <button onClick={() => onNavigate("services")} className="hover:text-[#d4af37] transition-colors text-left">Services</button>
+              <button onClick={() => onNavigate("before-after")} className="hover:text-[#d4af37] transition-colors text-left">Before/After</button>
+              <button onClick={() => onNavigate("portfolio")} className="hover:text-[#d4af37] transition-colors text-left">Exhibition Gallery</button>
+              <button onClick={() => onNavigate("ai-diagnosis")} className="hover:text-[#d4af37] transition-colors text-left">AI Diagnostics</button>
+              <button onClick={() => onNavigate("team")} className="hover:text-[#d4af37] transition-colors text-left">Specialists</button>
+              <button onClick={() => onNavigate("faq")} className="hover:text-[#d4af37] transition-colors text-left">Common FAQs</button>
+              <button onClick={() => onNavigate("contact")} className="hover:text-[#d4af37] transition-colors text-left">Inquire Now</button>
+            </div>
+          </div>
+
+          {/* Core Services (3 cols) */}
+          <div className="lg:col-span-3 flex flex-col items-start">
+            <h4 className="font-display text-xs tracking-widest uppercase text-white font-medium mb-4">Retouching Specs</h4>
+            <div className="flex flex-col gap-2.5 font-sans text-xs text-gray-400 font-light">
+              <span className="hover:text-[#d4af37] transition-colors">High-End Metal Polishing</span>
+              <span className="hover:text-[#d4af37] transition-colors">Diamond Sparkle Calibration</span>
+              <span className="hover:text-[#d4af37] transition-colors">Colored Gemstone Depth Correction</span>
+              <span className="hover:text-[#d4af37] transition-colors">Pen-Tool Clipping Path Isolation</span>
+              <span className="hover:text-[#d4af37] transition-colors">Natural Shadow & Mirror Reflections</span>
+              <span className="hover:text-[#d4af37] transition-colors">Multi-Alloy Metal Transmutation</span>
+            </div>
+          </div>
+
+          {/* Contact Details (3 cols) */}
+          <div className="lg:col-span-3 flex flex-col items-start gap-4">
+            <h4 className="font-display text-xs tracking-widest uppercase text-white font-medium mb-2">Agency HQ</h4>
+            
+            <div className="space-y-3 font-sans text-xs text-gray-400 font-light">
+              <a href={`https://wa.me/${cleanPhone}`} target="_blank" rel="noreferrer" className="flex items-center gap-2 hover:text-[#d4af37] transition-colors">
+                <MessageSquare className="w-3.5 h-3.5 text-[#d4af37]" />
+                <span>WhatsApp: {phone}</span>
+              </a>
+              <a href={`mailto:${email}`} className="flex items-center gap-2 hover:text-[#d4af37] transition-colors">
+                <Mail className="w-3.5 h-3.5 text-[#d4af37]" />
+                <span>Email: {email}</span>
+              </a>
+              <div className="flex items-start gap-2">
+                <MapPin className="w-3.5 h-3.5 text-[#d4af37] mt-0.5 shrink-0" />
+                <span>Address: {address}</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        {/* Footer bottom bar */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-gray-500 font-sans font-light">
+          <span>
+            © {new Date().getFullYear()} Jewelry Perfection. All Rights Reserved. Designed for Fine Jewellers Worldwide.
+          </span>
+          
+          <div className="flex items-center gap-6">
+            <button onClick={handleScrollTop} className="flex items-center gap-1 hover:text-[#d4af37] transition-colors">
+              <span>Return To Top</span>
+              <ArrowUp className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+      {/* Floating Sticky Actions (WhatsApp and Free Sample) */}
+      <div className="fixed bottom-6 right-6 z-40 flex flex-col gap-3" id="floating-actions">
+        <a 
+          href={`https://wa.me/${cleanPhone}`}
+          target="_blank"
+          rel="noreferrer"
+          className="p-3.5 rounded-full bg-green-500 text-black hover:bg-green-400 hover:scale-105 transition-all duration-300 shadow-xl shadow-green-500/20"
+          title="Chat with QC director"
+        >
+          <MessageSquare className="w-5 h-5 fill-current" />
+        </a>
+      </div>
+    </footer>
+  );
+}

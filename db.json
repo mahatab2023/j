@@ -1,0 +1,313 @@
+import { useState, useRef, DragEvent, ChangeEvent, FormEvent } from "react";
+import { Upload, CheckCircle2, Loader2, FileText, AlertCircle, Sparkles } from "lucide-react";
+
+export default function SampleRequestSection() {
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [whatsapp, setWhatsapp] = useState("");
+  const [message, setMessage] = useState("");
+  
+  const [fileUrl, setFileUrl] = useState<string | null>(null);
+  const [originalFileName, setOriginalFileName] = useState("");
+  
+  const [isUploadingFile, setIsUploadingFile] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleDragOver = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+  };
+
+  const handleDrop = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      uploadFile(e.dataTransfer.files[0]);
+    }
+  };
+
+  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      uploadFile(e.target.files[0]);
+    }
+  };
+
+  const uploadFile = async (file: File) => {
+    if (!file.type.startsWith("image/")) {
+      setErrorMsg("Please select a valid image file (PNG, JPG, TIF, etc.).");
+      return;
+    }
+
+    setIsUploadingFile(true);
+    setErrorMsg(null);
+    setOriginalFileName(file.name);
+
+    // Read file as Base64
+    const reader = new FileReader();
+    reader.onload = async () => {
+      try {
+        const base64Data = reader.result as string;
+        const res = await fetch("/api/upload", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: file.name, data: base64Data })
+        });
+        const data = await res.json();
+        if (data.success) {
+          setFileUrl(data.url);
+        } else {
+          setErrorMsg("File upload failed on server. Storing base64 directly.");
+          setFileUrl(base64Data); // fallback to base64
+        }
+      } catch (err) {
+        setErrorMsg("Failed to upload image file. Please verify network connection.");
+      } finally {
+        setIsUploadingFile(false);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!fileUrl) {
+      setErrorMsg("Please upload a jewelry image for your sample edit request.");
+      return;
+    }
+
+    setIsSubmitting(true);
+    setErrorMsg(null);
+
+    try {
+      const res = await fetch("/api/samples", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name,
+          email,
+          whatsapp,
+          message,
+          beforeUrl: fileUrl,
+          originalFileName
+        })
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        setIsSuccess(true);
+        // Reset state
+        setName("");
+        setEmail("");
+        setWhatsapp("");
+        setMessage("");
+        setFileUrl(null);
+      } else {
+        setErrorMsg(data.message || "Failed to submit sample edit request.");
+      }
+    } catch (err) {
+      setErrorMsg("Failed to connect to backend server. Please retry.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <section id="sample-edit" className="py-24 bg-[#080808] relative overflow-hidden border-t border-white/10">
+      <div className="absolute top-1/2 left-0 w-96 h-96 bg-[#D4AF37]/5 rounded-full blur-[140px] pointer-events-none" />
+      
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+        
+        {/* Section Header */}
+        <div className="text-center max-w-3xl mx-auto mb-16" id="sample-header">
+          <div className="inline-flex items-center gap-3 text-[#D4AF37] text-xs font-bold tracking-[0.3em] uppercase mb-4">
+            <span className="w-12 h-[1px] bg-[#D4AF37]"></span>
+            Test Our Caliber
+            <span className="w-12 h-[1px] bg-[#D4AF37]"></span>
+          </div>
+          <h2 className="font-display font-light text-3xl sm:text-5xl text-white mb-4">
+            Get a Free <span className="italic font-serif text-[#D4AF37]">Sample Edit</span>
+          </h2>
+          <p className="font-sans text-gray-400 text-sm font-light leading-relaxed">
+            Send us one jewelry photograph and experience our premium, pixel-perfect retouching quality firsthand before placing a paid order. No commitments, completely free.
+          </p>
+        </div>
+
+        {/* Lead Form Stage */}
+        <div className="bg-[#080808] border border-white/10 p-6 sm:p-10 rounded-none shadow-2xl" id="sample-stage">
+          {isSuccess ? (
+            /* Success Panel */
+            <div className="py-16 text-center max-w-lg mx-auto animate-fade-in" id="sample-success-panel">
+              <div className="w-16 h-16 rounded-none border border-green-500/20 bg-green-500/10 flex items-center justify-center text-green-400 mx-auto mb-6">
+                <CheckCircle2 className="w-8 h-8" />
+              </div>
+              <h3 className="font-display text-2xl font-semibold text-white mb-3">
+                Sample Request Received
+              </h3>
+              <p className="font-sans text-sm text-gray-400 leading-relaxed font-light mb-8">
+                Thank you for sending your jewelry file! Our senior director M.R Mahatab will assign your image to our specialized retouchers. We will return the edited file to your email or WhatsApp within 12-24 hours.
+              </p>
+              <button
+                onClick={() => setIsSuccess(false)}
+                className="px-6 py-3 border border-[#D4AF37]/40 hover:border-[#D4AF37] text-[#D4AF37] font-sans text-xs uppercase tracking-widest bg-white/5 rounded-none transition-all"
+              >
+                Submit Another Image
+              </button>
+            </div>
+          ) : (
+            /* Submit Form */
+            <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-12 gap-10 text-left">
+              
+              {/* Form Fields (6 cols) */}
+              <div className="md:col-span-6 space-y-5" id="sample-form-fields">
+                <h3 className="font-display text-sm font-semibold text-white flex items-center gap-2 mb-4 border-b border-white/10 pb-2.5 uppercase tracking-wider">
+                  <Sparkles className="w-4 h-4 text-[#D4AF37]" />
+                  Contact Information
+                </h3>
+
+                <div>
+                  <label className="block text-[10px] uppercase tracking-widest text-gray-400 font-sans mb-1.5 font-bold">
+                    Full Name <span className="text-[#D4AF37]">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="e.g. Michael Thorne"
+                    className="w-full py-3 px-4 rounded-none bg-[#0c0c0c] border border-white/10 text-white font-sans text-xs focus:border-[#D4AF37] focus:outline-none transition-all font-light"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] uppercase tracking-widest text-gray-400 font-sans mb-1.5 font-bold">
+                    Email Address <span className="text-[#D4AF37]">*</span>
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="e.g. michael@crownjewelry.com"
+                    className="w-full py-3 px-4 rounded-none bg-[#0c0c0c] border border-white/10 text-white font-sans text-xs focus:border-[#D4AF37] focus:outline-none transition-all font-light"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] uppercase tracking-widest text-gray-400 font-sans mb-1.5 font-bold">
+                    WhatsApp Number <span className="text-[#D4AF37]">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={whatsapp}
+                    onChange={(e) => setWhatsapp(e.target.value)}
+                    placeholder="e.g. +1 (415) 555-0123"
+                    className="w-full py-3 px-4 rounded-none bg-[#0c0c0c] border border-white/10 text-white font-sans text-xs focus:border-[#D4AF37] focus:outline-none transition-all font-light"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] uppercase tracking-widest text-gray-400 font-sans mb-1.5 font-bold">
+                    Retouching instructions / Notes
+                  </label>
+                  <textarea
+                    rows={4}
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    placeholder="e.g. Please remove the background to pure white, remove scratches on the band, and enhance sapphire reflections..."
+                    className="w-full py-3 px-4 rounded-none bg-[#0c0c0c] border border-white/10 text-white font-sans text-xs focus:border-[#D4AF37] focus:outline-none transition-all resize-none font-light"
+                  />
+                </div>
+              </div>
+
+              {/* File Drop Stage (6 cols) */}
+              <div className="md:col-span-6 flex flex-col justify-between" id="sample-drop-stage">
+                <div className="space-y-4">
+                  <h3 className="font-display text-sm font-semibold text-white uppercase tracking-wider mb-4 border-b border-white/10 pb-2.5">
+                    Upload Jewelry File
+                  </h3>
+
+                  {/* Drop Target Box */}
+                  <div 
+                    onDragOver={handleDragOver}
+                    onDrop={handleDrop}
+                    onClick={() => fileInputRef.current?.click()}
+                    className="border border-dashed border-white/20 hover:border-[#D4AF37] bg-white/3 hover:bg-white/5 transition-all duration-300 rounded-none py-12 px-6 text-center cursor-pointer flex flex-col items-center group relative min-h-[220px] justify-center"
+                  >
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      onChange={handleFileChange}
+                      className="hidden"
+                      accept="image/*"
+                    />
+
+                    {isUploadingFile ? (
+                      <div className="flex flex-col items-center animate-pulse">
+                        <Loader2 className="w-8 h-8 text-[#D4AF37] animate-spin mb-3" />
+                        <p className="font-mono text-[10px] tracking-wider text-[#D4AF37] uppercase">Uploading image file...</p>
+                      </div>
+                    ) : fileUrl ? (
+                      <div className="flex flex-col items-center">
+                        <div className="w-14 h-14 rounded-none border border-green-500/20 bg-green-500/5 flex items-center justify-center text-green-400 mb-4">
+                          <CheckCircle2 className="w-6 h-6" />
+                        </div>
+                        <p className="font-sans text-xs font-semibold text-white max-w-xs truncate mb-1">
+                          {originalFileName}
+                        </p>
+                        <p className="font-sans text-[10px] text-gray-500 font-light">
+                          Click to replace image
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center">
+                        <div className="w-12 h-12 rounded-none bg-white/5 border border-white/10 flex items-center justify-center text-[#D4AF37] mb-4 group-hover:scale-110 transition-transform">
+                          <Upload className="w-5 h-5" />
+                        </div>
+                        <p className="font-display text-sm font-semibold text-white mb-1.5">
+                          Drag & Drop Jewelry Photo Here
+                        </p>
+                        <p className="font-sans text-[10px] text-gray-500 font-light">
+                          PNG, JPG, TIFF, or PSD files are accepted. Max 20MB.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {errorMsg && (
+                  <div className="mt-4 p-4 border border-red-500/20 bg-red-500/5 rounded-none text-red-400 text-xs flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4 shrink-0" />
+                    <span>{errorMsg}</span>
+                  </div>
+                )}
+
+                {/* Submit Action */}
+                <div className="mt-8">
+                  <button
+                    type="submit"
+                    disabled={isSubmitting || isUploadingFile}
+                    className="w-full py-4 bg-[#D4AF37] hover:bg-white text-black font-sans font-bold text-xs uppercase tracking-widest rounded-none hover:brightness-110 transition-all duration-300 disabled:opacity-50 disabled:pointer-events-none flex items-center justify-center gap-2 shadow-lg cursor-pointer"
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin text-black" />
+                        Submitting Free Request...
+                      </>
+                    ) : (
+                      "Submit Free Sample Request"
+                    )}
+                  </button>
+                </div>
+              </div>
+
+            </form>
+          )}
+        </div>
+
+      </div>
+    </section>
+  );
+}

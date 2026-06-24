@@ -1,0 +1,268 @@
+import { Service, BeforeAfterProject, GalleryItem, TeamMember, Testimonial, WebsiteSettings } from "./types";
+
+export const defaultServices: Service[] = [
+  {
+    id: "srv-1",
+    title: "High-End Jewelry Retouching",
+    description: "Complete luxury makeover for your fine jewelry images. Includes high-fidelity polishing, diamond sparkle restoration, and flawless alignment.",
+    benefits: [
+      "Intricate surface cleanup",
+      "Prong and setting realignment",
+      "True-to-life color fidelity",
+      "Flawless mirror-finish metal shine"
+    ],
+    iconName: "Sparkles",
+    price: "From $3.50 / image"
+  },
+  {
+    id: "srv-2",
+    title: "Background Removal & Pure White",
+    description: "Exquisite isolation of jewelry items onto pure 100% white, solid black, or transparent backgrounds suitable for high-end commerce.",
+    benefits: [
+      "Perfect hand-drawn clipping paths",
+      "Smooth edge transitions",
+      "Studio-standard Amazon/Shopify/Etsy compliance",
+      "Custom textured background options"
+    ],
+    iconName: "Scissors",
+    price: "From $1.50 / image"
+  },
+  {
+    id: "srv-3",
+    title: "Diamond & Gemstone Enhancement",
+    description: "Unlock the natural fire, brilliance, and facets of diamonds and precious gemstones. We correct clarity, color, and reflection profiles.",
+    benefits: [
+      "Brilliance and fire amplification",
+      "Gemstone depth and facet restoration",
+      "Color tint correction (Emerald, Sapphire, Ruby)",
+      "Prong shadow cleaning"
+    ],
+    iconName: "Gem",
+    price: "From $2.50 / image"
+  },
+  {
+    id: "srv-4",
+    title: "Metal Polishing & Texture Correction",
+    description: "Remove micro-scratches, dust, and photographer reflections. We restore gold, silver, rose gold, and platinum to mirror perfection.",
+    benefits: [
+      "Scratch and dust elimination",
+      "Metal gradient smoothing",
+      "Authentic metallic luster preservation",
+      "Satin/brushed metal restoration"
+    ],
+    iconName: "Zap",
+    price: "From $2.00 / image"
+  },
+  {
+    id: "srv-5",
+    title: "Reflection & Shadow Control",
+    description: "Add soft, organic ground reflections and drop shadows to give your jewelry weight, realism, and a premium studio feel.",
+    benefits: [
+      "Realistic ground drop shadows",
+      "Luxury mirror reflection effects",
+      "Natural light source alignment",
+      "Floating jewelry dimension control"
+    ],
+    iconName: "Sun",
+    price: "From $1.80 / image"
+  },
+  {
+    id: "srv-6",
+    title: "Color Correction & Metal Matching",
+    description: "Ensure color accuracy of precious stones and metal alloys. We can shift metals between Yellow Gold, White Gold, and Rose Gold.",
+    benefits: [
+      "Pantone and real-metal color matching",
+      "Multi-metal alloy separation",
+      "Consistent gemstone saturation across collections",
+      "Non-destructive color grading"
+    ],
+    iconName: "Paintbrush",
+    price: "From $1.50 / image"
+  }
+];
+
+export const defaultBeforeAfter: BeforeAfterProject[] = [
+  {
+    id: "ba-1",
+    title: "Royal Diamond Solitaire Ring",
+    description: "Complete metal repolishing and diamond fire enhancement. Removed harsh yellow camera reflections and placed on luxury shadow gradient.",
+    category: "Jewelry Retouching",
+    beforeUrl: "https://images.unsplash.com/photo-1605100804763-247f67b3557e?w=800&auto=format&fit=crop",
+    afterUrl: "https://images.unsplash.com/photo-1605100804763-247f67b3557e?w=800&auto=format&fit=crop",
+    servicesApplied: [
+      "Diamond Fire Amplification",
+      "Platinum Polishing",
+      "Prong Realignment",
+      "Organic Shadow"
+    ],
+    presetFilter: "preset-ring"
+  },
+  {
+    id: "ba-2",
+    title: "Emerald & Gold Pendant",
+    description: "Polished 24K yellow gold and removed camera reflections. Enhanced emerald clarity and restored natural stone facets and depth.",
+    category: "Gemstone Enhancement",
+    beforeUrl: "https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?w=800&auto=format&fit=crop",
+    afterUrl: "https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?w=800&auto=format&fit=crop",
+    servicesApplied: [
+      "Gemstone Clarity Correction",
+      "24K Gold Polish",
+      "Studio Background Removal",
+      "Reflection Control"
+    ],
+    presetFilter: "preset-emerald"
+  },
+  {
+    id: "ba-3",
+    title: "Premium Rose Gold Chronograph",
+    description: "Intricate bezel polishing, crystal glass scratch removal, and brushed metal texture restoration. Balanced all dials and hands.",
+    category: "Luxury Retouching",
+    beforeUrl: "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800&auto=format&fit=crop",
+    afterUrl: "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800&auto=format&fit=crop",
+    servicesApplied: [
+      "Glass Scratch Elimination",
+      "Rose Gold Polishing",
+      "Dial Contrast Balancing",
+      "Floating Mirror Shadow"
+    ],
+    presetFilter: "preset-watch"
+  }
+];
+
+export const defaultGallery: GalleryItem[] = [
+  {
+    id: "gal-1",
+    title: "Golden Filigree Diamond Bracelet",
+    category: "Jewelry Retouching",
+    imageUrl: "https://images.unsplash.com/photo-1611591437281-460bfbe1220a?w=800&auto=format&fit=crop",
+    description: "High-end hand-polished details with diamond fire correction."
+  },
+  {
+    id: "gal-2",
+    title: "Solitaire Sapphire Ring",
+    category: "Diamond Enhancement",
+    imageUrl: "https://images.unsplash.com/photo-1617038260897-41a1f14a8ca0?w=800&auto=format&fit=crop",
+    description: "Enhanced deep sapphire crystal facets and pristine platinum shine."
+  },
+  {
+    id: "gal-3",
+    title: "Art Deco Emerald Earrings",
+    category: "Luxury Retouching",
+    imageUrl: "https://images.unsplash.com/photo-1635767798638-3e25273a8236?w=800&auto=format&fit=crop",
+    description: "Reflection control and prong alignment for catalog standards."
+  },
+  {
+    id: "gal-4",
+    title: "Minimalist Diamond Bands",
+    category: "Background Removal",
+    imageUrl: "https://images.unsplash.com/photo-1603561591411-07134e71a2a9?w=800&auto=format&fit=crop",
+    description: "Clean isolation onto pure black background for high-end magazine display."
+  },
+  {
+    id: "gal-5",
+    title: "Fine Gold Wedding Set",
+    category: "Color Correction",
+    imageUrl: "https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?w=800&auto=format&fit=crop",
+    description: "Polishing and gold tone matching for consistent collection presentation."
+  },
+  {
+    id: "gal-6",
+    title: "Classic Silver Charm Bracelet",
+    category: "Product Editing",
+    imageUrl: "https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?w=800&auto=format&fit=crop",
+    description: "Complex shadow creation and white-metal scratch removal."
+  }
+];
+
+export const defaultTeam: TeamMember[] = [
+  {
+    id: "tm-1",
+    name: "M.R Mahatab",
+    role: "Founder & Creative Director",
+    imageUrl: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=500&auto=format&fit=crop",
+    expertise: [
+      "Quality Control",
+      "Art Direction",
+      "Workflow Automation",
+      "Client Relations"
+    ],
+    isCore: true
+  },
+  {
+    id: "tm-2",
+    name: "Ismail Al Yafi",
+    role: "Senior Retouching Specialist",
+    imageUrl: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=500&auto=format&fit=crop",
+    expertise: [
+      "High-End Metal Polishing",
+      "Diamond Contrast Adjustments",
+      "Complex Clipping Paths"
+    ],
+    isCore: true
+  },
+  {
+    id: "tm-3",
+    name: "Amina Rahman",
+    role: "Lead Gemstone Enhancer",
+    imageUrl: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=500&auto=format&fit=crop",
+    expertise: [
+      "Gemstone Facet Detailing",
+      "Color Precision Matching",
+      "E-commerce Standards"
+    ],
+    isCore: false
+  },
+  {
+    id: "tm-4",
+    name: "Tanvir Hasan",
+    role: "Bulk Project Coordinator",
+    imageUrl: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=500&auto=format&fit=crop",
+    expertise: [
+      "High Volume Handling",
+      "Timeline Management",
+      "File Structure Organization"
+    ],
+    isCore: false
+  }
+];
+
+export const defaultTestimonials: Testimonial[] = [
+  {
+    id: "t-1",
+    name: "Sarah Jenkins",
+    company: "Director of Operations at Aura Fine Jewelry (New York)",
+    review: "Jewelry Perfection has completely transformed our e-commerce catalog. Over 5,000 images processed and every single one is absolute perfection. Their speed and precision are world-class.",
+    rating: 5,
+    avatarUrl: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop"
+  },
+  {
+    id: "t-2",
+    name: "Marcus Valerius",
+    company: "Founder of Valerius Luxury (London)",
+    review: "Their diamond and gemstone enhancement techniques are sheer magic. Our e-commerce sales conversion rate improved by 35% after we updated our store with their edited high-end renders.",
+    rating: 5,
+    avatarUrl: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&auto=format&fit=crop"
+  },
+  {
+    id: "t-3",
+    name: "Kenji Takahashi",
+    company: "Commercial Photographer (Tokyo)",
+    review: "As a professional jewelry photographer, I'm extremely picky. The team at Jewelry Perfection matches my specifications perfectly. Metal polishing, scratch removal, and shadows look 100% natural.",
+    rating: 5,
+    avatarUrl: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&auto=format&fit=crop"
+  }
+];
+
+export const defaultSettings: WebsiteSettings = {
+  phone: "+880 1328-252376",
+  email: "info.jewelryperfection@gmail.com",
+  facebook: "https://www.facebook.com/JewelryPerfection",
+  instagram: "https://www.instagram.com/_jewelryperfection/",
+  behance: "https://www.behance.net/JewelryPerfection",
+  fiverr: "https://www.fiverr.com/sellers/ismailalyafi",
+  address: "Dhaka, Bangladesh",
+  businessHours: "24/7 Client Support",
+  responseTime: "Within 30 Minutes",
+  metaTitle: "Premium Jewelry Retouching Services | Jewelry Perfection",
+  metaDescription: "Professional high-end jewelry photo retouching and e-commerce product image editing agency. Serving luxury jewelry brands, retailers, and photographers worldwide."
+};
